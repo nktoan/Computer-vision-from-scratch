@@ -11,5 +11,7 @@
 Mat convertToGrayScale(const Mat &source);
 
 void detectHarris(const Mat &source, float k = 0.05, float thresh = 0.01);
+void detectBlob(const Mat &source, float signma = 1.0, float k = sqrt(2));
+void detectDOG(const Mat &source, float signma = 1.0, float k = sqrt(2));
 
 #endif

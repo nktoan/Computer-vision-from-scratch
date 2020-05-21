@@ -7,8 +7,7 @@
 
 int main(int argc, char** argv)
 {
-	Mat src = imread("lena.png", IMREAD_COLOR);
-	detectHarris(src);
-
+	Mat src = imread("sunflower.jpeg", IMREAD_COLOR);
+	detectBlob(src);
 	return 0;
 }

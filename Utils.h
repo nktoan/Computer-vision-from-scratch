@@ -20,9 +20,10 @@ void printMatrixInfo(const Mat &source);
 float getValueOfMatrix(const Mat &source, int y, int x);
 void setValueOfMatrix(Mat &source, int y, int x, float value);
 
-Mat createGaussianKernel(int GaussianSize = 5, float signma = 1.0);
 Mat createSobelX();
 Mat createSobelY();
+Mat createGaussianKernel(int gaussianSize = 5, float signma = 1.0);
+Mat createLoG_Kernel(int gaussianSize = 5, float signma = 1.0);
 
 Mat multiplyElementWise(const Mat& mat1, const Mat& mat2);
 

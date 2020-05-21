@@ -51,6 +51,7 @@ void setValueOfMatrix(Mat &source, int y, int x, float value) {
 }
 
 Mat createGaussianKernel(int gaussianSize, float signma) {
+	assert(gaussianSize % 2 == 1);
 	Mat gaussianKernel = Mat::zeros(gaussianSize, gaussianSize, CV_32FC1);
 	float sum = 0.0;
 	float var = 2 * signma * signma;
@@ -92,4 +93,27 @@ Mat multiplyElementWise(const Mat& mat1, const Mat& mat2) {
 		}
 
 	return res;
+}
+
+Mat createLoG_Kernel(int gaussianSize, float signma){
+	assert(gaussianSize % 2 == 1);
+	Mat LoG_kernel = Mat::zeros(gaussianSize, gaussianSize, CV_32FC1);
+	float sum = 0.0;
+	float var = 2 * signma * signma;
+	float r, pi = 2 * acos(0);	
+	
+	for (int y = -(gaussianSize / 2); y <= gaussianSize / 2; ++y) {
+		for (int x = -(gaussianSize / 2); x <= gaussianSize / 2; ++x) {
+			r = sqrt(x*x + y*y);
+			float val = (-4.0) * (exp(-(r*r) / var) * (1.0 - (r * r / var))) / (pi * var * var);
+			LoG_kernel.at<float>(y + gaussianSize / 2, x + gaussianSize / 2) = val;
+			sum += LoG_kernel.at<float>(y + gaussianSize / 2, x + gaussianSize / 2);
+		}
+	}
+
+	for (int i = 0; i < gaussianSize; ++i)
+		for (int j = 0; j < gaussianSize; ++j)
+			LoG_kernel.at<float>(i, j) = LoG_kernel.at<float>(i, j) * 1.0 / sum;
+
+	return LoG_kernel;
 }
