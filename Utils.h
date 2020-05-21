@@ -19,12 +19,14 @@ using namespace cv;
 void printMatrixInfo(const Mat &source);
 float getValueOfMatrix(const Mat &source, int y, int x);
 void setValueOfMatrix(Mat &source, int y, int x, float value);
+float getMaxValueOfMatrix(const Mat &source);
 
 Mat createSobelX();
 Mat createSobelY();
-Mat createGaussianKernel(int gaussianSize = 5, float signma = 1.0);
+Mat createGaussianKernel(int gaussianSize = 5, float signma = 1.0, bool divide = true);
 Mat createLoG_Kernel(int gaussianSize = 5, float signma = 1.0);
 
 Mat multiplyElementWise(const Mat& mat1, const Mat& mat2);
+Mat mimusElementWise(const Mat& mat1, const Mat& mat2);
 
 #endif

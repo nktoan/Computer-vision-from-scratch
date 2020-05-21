@@ -7,16 +7,9 @@
 
 int main(int argc, char** argv)
 {
-	Mat src = imread("sunflower.jpeg", IMREAD_COLOR);
-	detectBlob(src);
+	Mat src = imread("sunflower_small.jpg", IMREAD_COLOR);
+	detectDOG(src);
 	
-	/*
-	Mat kernel = createLoG_Kernel(5, 1.0);
-	for (int y = 0; y < kernel.rows; ++y) {
-		for (int x = 0; x < kernel.cols; ++x)
-			cout << kernel.at<float>(y, x) << " ";
-		cout << endl;
-	}
-	*/
+
 	return 0;
 }

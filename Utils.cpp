@@ -50,7 +50,15 @@ void setValueOfMatrix(Mat &source, int y, int x, float value) {
 	}
 }
 
-Mat createGaussianKernel(int gaussianSize, float signma) {
+float getMaxValueOfMatrix(const Mat &source){
+	float mx = -1e9;
+	for (int y = 0; y < source.rows; ++y) 
+		for (int x = 0; x < source.cols; ++x) 
+			mx = max(mx, getValueOfMatrix(source, y, x));
+	return mx;
+}
+
+Mat createGaussianKernel(int gaussianSize, float signma, bool divide) {
 	assert(gaussianSize % 2 == 1);
 	Mat gaussianKernel = Mat::zeros(gaussianSize, gaussianSize, CV_32FC1);
 	float sum = 0.0;
@@ -64,23 +72,24 @@ Mat createGaussianKernel(int gaussianSize, float signma) {
 			sum += gaussianKernel.at<float>(y + gaussianSize / 2, x + gaussianSize / 2);
 		}
 	}
-	for (int i = 0; i < gaussianSize; ++i)
-		for (int j = 0; j < gaussianSize; ++j)
-			gaussianKernel.at<float>(i, j) = gaussianKernel.at<float>(i, j) * 1.0 / sum;
-	
+	if (divide == true) {
+		for (int i = 0; i < gaussianSize; ++i)
+			for (int j = 0; j < gaussianSize; ++j)
+				gaussianKernel.at<float>(i, j) = gaussianKernel.at<float>(i, j) * 1.0 / sum;
+	}
+
 	return gaussianKernel;
 }
 Mat createSobelX() {
 	return (Mat_<float>(3, 3) << -1, 0, 1,
-								 -2, 0, 2,
-								 -1, 0, 1);
+		-2, 0, 2,
+		-1, 0, 1);
 }
 Mat createSobelY() {
 	return (Mat_<float>(3, 3) << -1, -2, -1,
-								  0, 0, 0,
-								  1, 2, 1);
+		0, 0, 0,
+		1, 2, 1);
 }
-
 
 Mat multiplyElementWise(const Mat& mat1, const Mat& mat2) {
 	int height = mat1.rows, width = mat2.cols;
@@ -89,6 +98,19 @@ Mat multiplyElementWise(const Mat& mat1, const Mat& mat2) {
 	for (int y = 0; y < height; ++y)
 		for (int x = 0; x < width; ++x) {
 			float multiply_res = getValueOfMatrix(mat1, y, x) * getValueOfMatrix(mat2, y, x);
+			setValueOfMatrix(res, y, x, multiply_res);
+		}
+
+	return res;
+}
+
+Mat mimusElementWise(const Mat& mat1, const Mat& mat2) {
+	int height = mat1.rows, width = mat2.cols;
+	Mat res = Mat::zeros(height, width, CV_32FC1);
+
+	for (int y = 0; y < height; ++y)
+		for (int x = 0; x < width; ++x) {
+			float multiply_res = getValueOfMatrix(mat1, y, x) - getValueOfMatrix(mat2, y, x);
 			setValueOfMatrix(res, y, x, multiply_res);
 		}
 
