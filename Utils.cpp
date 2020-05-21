@@ -105,15 +105,11 @@ Mat createLoG_Kernel(int gaussianSize, float signma){
 	for (int y = -(gaussianSize / 2); y <= gaussianSize / 2; ++y) {
 		for (int x = -(gaussianSize / 2); x <= gaussianSize / 2; ++x) {
 			r = sqrt(x*x + y*y);
-			float val = (-4.0) * (exp(-(r*r) / var) * (1.0 - (r * r / var))) / (pi * var * var);
+			float val = (-4.0) * (exp(-(r * r) / var) * (1.0 - (r * r / var))) / (pi * var * var);
 			LoG_kernel.at<float>(y + gaussianSize / 2, x + gaussianSize / 2) = val;
 			sum += LoG_kernel.at<float>(y + gaussianSize / 2, x + gaussianSize / 2);
 		}
 	}
-
-	for (int i = 0; i < gaussianSize; ++i)
-		for (int j = 0; j < gaussianSize; ++j)
-			LoG_kernel.at<float>(i, j) = LoG_kernel.at<float>(i, j) * 1.0 / sum;
 
 	return LoG_kernel;
 }

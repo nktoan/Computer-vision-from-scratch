@@ -32,8 +32,7 @@ void detectHarris(const Mat &source, float k, float thresh) {
 	Mat gradient_y_square = multiplyElementWise(gradient_x, gradient_y);
 	Mat gradient_x_y = multiplyElementWise(gradient_y, gradient_y);
 
-	/* Step 5: create a matrix 2x2 M at each position (y, x) = [[gradient_x_square, gradient_x_y], 
-																[gradient_x_y, gradient_y_square]]
+	/* Step 5: create a matrix 2x2 M at each position (y, x) = [[gradient_x_square, gradient_x_y], [gradient_x_y, gradient_y_square]]
 				then we have R[y, x] = det(M) - k. (trace(M))^2 */
 	float r_max = -1e9;
 	Mat R = Mat::zeros(source.size(), CV_32FC1);
@@ -117,15 +116,16 @@ void detectBlob(const Mat &source, float signma, float k){
 	vector<Mat> log_image(10, Mat::zeros(source.size(), CV_32FC1));
 	float signma_y = signma;
 
-	for (int index = 0; index < log_image.size(); ++index) {
-		signma_y = (index == 0) ? signma_y : (signma_y * k);
+	for (int idx = 0; idx < log_image.size(); ++idx) {
+		signma_y = (idx == 0) ? signma_y : (signma_y * k);
 
 		Mat log_filter = createLoG_Kernel(5, signma_y);
 		Mat conv_result;
 		filter2D(srcGray, conv_result, CV_32FC1, log_filter);
+
 		conv_result = multiplyElementWise(conv_result, conv_result);
 
-		log_image[index] = conv_result;
+		log_image[idx] = conv_result;
 	}
 
 	/* Step 3: Finding the maximum peak, comparing with 26 points */
@@ -133,8 +133,8 @@ void detectBlob(const Mat &source, float signma, float k){
 
 	for (int y = 0; y < source.rows; ++y) {
 		for (int x = 0; x < source.cols; ++x) {
-			for (int index = 0; index < log_image.size(); ++index) {
-				float val = getValueOfMatrix(log_image[index], y, x);
+			for (int idx = 0; idx < log_image.size(); ++idx) {
+				float val = getValueOfMatrix(log_image[idx], y, x);
 
 				bool found_peak = true;
 				for (int step_idx = -10; step_idx <= 10; ++step_idx) {
@@ -146,7 +146,7 @@ void detectBlob(const Mat &source, float signma, float k){
 						for (int step_y = -1; step_y <= 1; ++step_y) {
 							if (found_peak == false) break;
 
-							int cur_idx = index + step_idx, cur_y = y + step_y, cur_x = x + step_x;
+							int cur_idx = idx + step_idx, cur_y = y + step_y, cur_x = x + step_x;
 							if (cur_idx >= log_image.size() || cur_idx < 0) continue;
 							if (cur_y >= source.rows || cur_y < 0) continue;
 							if (cur_x >= source.cols || cur_x < 0) continue;
@@ -157,8 +157,8 @@ void detectBlob(const Mat &source, float signma, float k){
 					}
 				}
 
-				if (found_peak == true && val > 0.03)
-					blob_points.insert(make_tuple(y, x, pow(k, index)*signma));
+				if (found_peak == true)
+					blob_points.insert(make_tuple(y, x, pow(k, idx)*signma));
 			}
 		}
 	}
@@ -168,7 +168,7 @@ void detectBlob(const Mat &source, float signma, float k){
 	/* Step 5: Draw the blobs */
 	Mat dst = source.clone();
 	for (tuple<int, int, float> point : blob_points)
-		circle(dst, Point(get<1>(point), get<0>(point)), get<2>(point)*sqrt(2), (0, 0, 255), 2, 8, 0);//(y,x) -> Point(x,y)
+		circle(dst, Point(get<1>(point), get<0>(point)), get<2>(point) * sqrt(2), (0, 0, 255), 2, 8, 0);//(y,x) -> Point(x,y)
 
 	/* Step 6: Show the blob image */
 	namedWindow("Blob_detector");
