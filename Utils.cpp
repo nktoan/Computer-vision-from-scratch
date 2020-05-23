@@ -5,6 +5,12 @@
 
 #include"Utils.h"
 
+Mat convertToGrayScale(const Mat &source) {
+	Mat dst;
+	cvtColor(source, dst, COLOR_BGR2GRAY);
+	return dst;
+}
+
 void printMatrixInfo(const Mat &source) {
 	int typeMatrix = source.type();
 	string printOut;
@@ -58,8 +64,12 @@ float getMaxValueOfMatrix(const Mat &source){
 	return mx;
 }
 
-Mat createGaussianKernel(int gaussianSize, float signma, bool divide) {
-	assert(gaussianSize % 2 == 1);
+Mat createGaussianKernel(int gaussianSize, float signma, bool divide, bool size_with_signma){
+	if (size_with_signma == false)
+		assert(gaussianSize % 2 == 1);
+	else
+		gaussianSize = (int) 2 * ceil(3 * signma) + 1;
+
 	Mat gaussianKernel = Mat::zeros(gaussianSize, gaussianSize, CV_32FC1);
 	float sum = 0.0;
 	float var = 2 * signma * signma;
@@ -92,8 +102,10 @@ Mat createSobelY() {
 }
 
 Mat multiplyElementWise(const Mat& mat1, const Mat& mat2) {
+	assert(mat1.rows == mat2.rows && mat1.cols == mat2.cols);
+
 	int height = mat1.rows, width = mat2.cols;
-	Mat res = Mat::zeros(height, width, CV_32FC1);
+	Mat res = mat1.clone();
 	
 	for (int y = 0; y < height; ++y)
 		for (int x = 0; x < width; ++x) {
@@ -105,8 +117,10 @@ Mat multiplyElementWise(const Mat& mat1, const Mat& mat2) {
 }
 
 Mat mimusElementWise(const Mat& mat1, const Mat& mat2) {
+	assert(mat1.rows == mat2.rows && mat1.cols == mat2.cols);
+
 	int height = mat1.rows, width = mat2.cols;
-	Mat res = Mat::zeros(height, width, CV_32FC1);
+	Mat res = mat1.clone();
 
 	for (int y = 0; y < height; ++y)
 		for (int x = 0; x < width; ++x) {
@@ -117,7 +131,7 @@ Mat mimusElementWise(const Mat& mat1, const Mat& mat2) {
 	return res;
 }
 
-Mat createLoG_Kernel(int gaussianSize, float signma){
+Mat createLoG_Kernel(int gaussianSize, float signma, bool normalized){
 	assert(gaussianSize % 2 == 1);
 	Mat LoG_kernel = Mat::zeros(gaussianSize, gaussianSize, CV_32FC1);
 	float sum = 0.0;
@@ -128,6 +142,7 @@ Mat createLoG_Kernel(int gaussianSize, float signma){
 		for (int x = -(gaussianSize / 2); x <= gaussianSize / 2; ++x) {
 			r = sqrt(x*x + y*y);
 			float val = (-4.0) * (exp(-(r * r) / var) * (1.0 - (r * r / var))) / (pi * var * var);
+			if (normalized == true) val = val * signma * signma;
 			LoG_kernel.at<float>(y + gaussianSize / 2, x + gaussianSize / 2) = val;
 			sum += LoG_kernel.at<float>(y + gaussianSize / 2, x + gaussianSize / 2);
 		}
