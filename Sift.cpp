@@ -106,7 +106,7 @@ vector<myKeyPoint> SiftDetector::localise_keypoint_for_octave(int oct, const vec
 	int n_layer = DoG_pyramid[oct].size();
 
 	for (myKeyPoint point : Extrema[oct]) {
-		int y = point.y_image, x = point.x_image, s = point.layer_index;
+		int y = (int)point.y_image, x = (int)point.x_image, s = (int)point.layer_index;
 
 		float dx, dy, ds, dxx, dxy, dxs, dyy, dys, dss;
 		dx = (getValueOfMatrix(DoG_pyramid[oct][s], y, x + 1) - getValueOfMatrix(DoG_pyramid[oct][s], y, x - 1)) / 2.0;
@@ -159,15 +159,103 @@ vector<myKeyPoint> SiftDetector::localise_keypoint_for_octave(int oct, const vec
 		float ratio = 1.0 * trace_H * trace_H / det_H;
 		if (ratio > (1.0*(thresh_contrast + 1)*(thresh_contrast + 1) / thresh_contrast)) continue;
 
+		point.x_image += offset_mat.at<float>(0, 0);
+		point.y_image += offset_mat.at<float>(1, 0);
+		point.layer_index += offset_mat.at<float>(2, 0);
+
 		key_points.push_back(point);
 	}
 	return key_points;
 }
 
+float SiftDetector::getSignma(int oct, int layer, float signma, int num_octaves, int num_layers) {
+	vector<vector<float>> signma_vect(oct, vector<float>(layer, 0));
+	float signma_change = signma, k = pow(2, 1.0 / (num_layers - 1));
+	signma_vect[0][0] = signma;
+
+	for (int i = 0; i < num_octaves; ++i)
+		for (int j = 0; j < num_layers; ++j) {
+			signma_change = (i == 0 && j == 0) ? (signma_change) : signma_change * k;
+			signma_vect[i][j] = signma_change;
+		}
+
+	return signma_vect[oct][layer];
+}
+
+vector<myKeyPoint> SiftDetector::orientation_assignment_for_octave(int oct, const vector<vector<Mat>> &DoG_pyramid, const vector<vector<myKeyPoint>> &keypoint, int num_bins) {
+	vector<myKeyPoint> orientation_kpts;
+
+	int n_layer = DoG_pyramid[oct].size(), binwidth = 360 / num_bins;
+
+	for (myKeyPoint point : keypoint[oct]) {
+		int y = (int) point.y_image, x = (int) point.x_image, s = (int)point.layer_index;
+		(s < 0) ? (s = 0) : ((s >= n_layer) ? (n_layer - 1) : s);
+		float signma = (s == 0) ? 1.0 : (s*1.5);
+		int w = int(2 * ceil(signma) + 1);
+		Mat kernel = createGaussianKernel(5, signma, true, true);
+		Mat L = DoG_pyramid[oct][s];
+
+		vector<float> hist(num_bins, 0);
+		int mx_bin = -1, mx_hist = -1e9;
+	
+		for (int oy = -w; oy <= w; ++oy) {
+			for (int ox = -w; ox <= w; ++ox) {
+				int cur_x = x + ox, cur_y = y + oy;
+				if (cur_x < 0 || cur_x >= L.cols || cur_y < 0 || cur_y >= L.rows) continue;
+				
+				float dx = getValueOfMatrix(L, min(cur_y + 1, L.rows - 1), cur_x) - getValueOfMatrix(L, max(cur_y - 1, 0), cur_x),
+					dy = getValueOfMatrix(L, cur_y, min(cur_x + 1, L.cols - 1)) - getValueOfMatrix(L, cur_y, max(cur_x - 1, 0));
+				float magnitude = sqrt(dx*dx + dy*dy), PI = 2 * acos(0);
+				float theta = atan2(dy, dx) * 180 / PI;
+				if (theta < 0) theta += 180;
+
+				float weight = getValueOfMatrix(kernel, oy + w, ox + w) * magnitude;
+				int bin = (int)floor(theta) / binwidth;
+				
+				hist[bin] += weight;
+				if (hist[bin] > mx_hist) 
+					mx_bin = bin, mx_hist = hist[bin];
+			}
+		}
+
+		orientation_kpts.push_back(myKeyPoint(point.y_image, point.x_image, point.octave_index, point.layer_index, fit_parabol(hist, mx_bin, binwidth)));
+
+		for (int i=0;i<hist.size();++i){
+			if (i == mx_bin) continue;
+			if (0.85 * mx_hist < hist[i])
+				orientation_kpts.push_back(myKeyPoint(point.y_image, point.x_image, point.octave_index, point.layer_index, fit_parabol(hist, mx_bin, binwidth)));
+		}
+
+	}
+
+	return orientation_kpts;
+}
+
+float SiftDetector::fit_parabol(const vector<float> &hist, int mx_bin, int binwidth) {
+	int centerval, rightval, leftval, n = hist.size();
+	centerval = mx_bin*binwidth + binwidth/2;
+	rightval = (mx_bin == n - 1) ? (360 + binwidth / 2) : ((mx_bin + 1)*binwidth + binwidth / 2);
+	leftval = (mx_bin == 0) ? (0 - binwidth / 2) : ((mx_bin - 1)*binwidth + binwidth / 2);
+
+	Mat A = Mat::zeros(3, 3, CV_32FC1);
+	A.at<float>(0, 0) = centerval*centerval, A.at<float>(0, 1) = centerval, A.at<float>(0, 2) = 1;
+	A.at<float>(1, 0) = rightval*rightval, A.at<float>(1, 1) = rightval, A.at<float>(1, 2) = 1;
+	A.at<float>(2, 0) = leftval*leftval, A.at<float>(2, 1) = leftval, A.at<float>(2, 2) = 1;
+
+	Mat b = Mat::zeros(3, 1, CV_32FC1);
+	b.at<float>(0, 0) = hist[mx_bin], b.at<float>(1, 0) = hist[(mx_bin + 1) % n], b.at<float>(2, 0) = hist[(mx_bin + n - 1) % n];
+
+	Mat x = A.inv()*b;
+	if (abs(x.at<float>(0) - 0.0) < 1e-6) x.at<float>(0) = 1e-4;
+	return -x.at<float>(1) / (2 * x.at<float>(0));
+}
+
 void SiftDetector::siftDetector(const Mat &source, int num_octaves, int num_scale_signma, float signma, float thresh_edge, float thresh_contrast, int windowSize){
 	Mat image = source.clone();
-	/* Step 1: Convert Image to GrayScale and Double the Image */
+	/* Step 1: Convert Image to GrayScale, Blur and Double the Image */
 	Mat srcGray = convertToGrayScale(image);
+
+	filter2D(srcGray, srcGray, -1, createGaussianKernel(5, 1.3));
 	
 	resize(srcGray, srcGray, cv::Size(), 2.0, 2.0, INTER_LINEAR);
 	
@@ -202,14 +290,28 @@ void SiftDetector::siftDetector(const Mat &source, int num_octaves, int num_scal
 
 	/* Step 6: Orientation Assignment */
 
+	int num_bins = 36;
+	vector<vector<myKeyPoint>> keyPoints_orientation(num_octaves);
+
+	for (int oct = 0; oct < num_octaves; ++oct) 
+		for (myKeyPoint kpts : orientation_assignment_for_octave(oct, DoG_pyramid, keyPoints, num_bins))
+			keyPoints_orientation[oct].push_back(kpts);
+
+	
+	/* Step 7: Get Keypoint Local Descriptor -> return: 128 long feature vector */
+
+
+
+
+
 	/* Step n: Draw the KeyPoints */
 	Mat dst = source.clone();
 	for (int oct = 0; oct < num_octaves; ++oct) {
-		for (myKeyPoint points : keyPoints[oct]) {
+		for (myKeyPoint points : keyPoints_orientation[oct]) {
 			circle(dst, Point(points.x_image, points.y_image), sqrt(2), Scalar(0, 0, 255), 2, 8, 0);//(y,x) -> Point(x,y)
 			//cout << points.x_image << " " << points.y_image << endl;
 		}
-		cout << "Choose : " << keyPoints[oct].size() << " points from octave " << oct << endl;
+		cout << "Choose : " << keyPoints_orientation[oct].size() << " points from octave " << oct << endl;
 	}
 	/* Step n+1: Show the KeyPoints image */
 	namedWindow("Sift_Detector");

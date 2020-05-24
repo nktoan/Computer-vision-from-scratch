@@ -9,7 +9,7 @@
 
 int main(int argc, char** argv)
 {
-	Mat src = imread("lena.png", IMREAD_COLOR);
+	Mat src = imread("sunflower_small.jpg", IMREAD_COLOR);
 	printMatrixInfo(src);
 
 	SiftDetector siftDetector;
