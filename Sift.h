@@ -13,10 +13,10 @@ public:
 	float y_image, x_image;
 	float octave_index, layer_index;
 	float hist_parabol_extrema;
+	Mat feature;
 public:
 	myKeyPoint(int y, int x, int oct, int layer) :y_image(y), x_image(x), octave_index(oct), layer_index(layer) {}
 	myKeyPoint(float y, float x, float oct, float layer, float hist_para_extre) :y_image(y), x_image(x), octave_index(oct), layer_index(layer), hist_parabol_extrema(hist_para_extre){}
-
 };
 
 class SiftDetector {
@@ -35,9 +35,10 @@ private:
 	vector<myKeyPoint> orientation_assignment_for_octave(int oct, const vector<vector<Mat>> &DoG_pyramid, const vector<vector<myKeyPoint>> &keypoint, int num_bins);
 	float fit_parabol(const vector<float> &hist, int mx_bin, int binwidth);
 
-
+	void get_local_descriptors(int oct, const vector<vector<Mat>> &DoG_pyramid, vector<vector<myKeyPoint>> &orientation_keypoint, int window_size = 16, int num_subregion = 4, int num_bin = 8);
 public:
-	void siftDetector(const Mat &source, int num_octaves = 4, int num_scale_signma = 5, float signma = 1.6, float thresh_edge = 10, float thresh_contrast = 0.03, int windowSize = 16);
+	vector<vector<myKeyPoint>> siftDetector(const Mat &source, int num_octaves = 4, int num_scale_signma = 5, float signma = 1.6, float thresh_edge = 10, float thresh_contrast = 0.03, int windowSize = 16);
+	void writingKeyPointToFile(const string &filename, const vector<vector<myKeyPoint>> &key_points);
 };
 
 

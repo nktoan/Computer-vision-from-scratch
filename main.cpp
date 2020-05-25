@@ -9,11 +9,23 @@
 
 int main(int argc, char** argv)
 {
-	Mat src = imread("sunflower_small.jpg", IMREAD_COLOR);
+	string image_name = "lena";
+	string image_type = "png";
+
+	Mat src = imread(image_name + '.' + image_type, IMREAD_COLOR);
+	cout << "The input image information: ";
 	printMatrixInfo(src);
 
+	vector<vector<myKeyPoint>> key_points;
+
 	SiftDetector siftDetector;
-	siftDetector.siftDetector(src);
+	key_points = siftDetector.siftDetector(src);
+	string file_name = image_name + ".txt";
+
+	siftDetector.writingKeyPointToFile(file_name, key_points);
+
+	//siftDetector.siftDetector(src);
+
 	//BlobDetector blobDetector;
 	//HarrisDetector harrisDetector;
 

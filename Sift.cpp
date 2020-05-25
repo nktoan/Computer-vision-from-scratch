@@ -192,7 +192,7 @@ vector<myKeyPoint> SiftDetector::orientation_assignment_for_octave(int oct, cons
 		(s < 0) ? (s = 0) : ((s >= n_layer) ? (n_layer - 1) : s);
 		float signma = (s == 0) ? 1.0 : (s*1.5);
 		int w = int(2 * ceil(signma) + 1);
-		Mat kernel = createGaussianKernel(5, signma, true, true);
+		Mat kernel = createGaussianKernel((int)2*w + 1, signma, true, false);
 		Mat L = DoG_pyramid[oct][s];
 
 		vector<float> hist(num_bins, 0);
@@ -203,8 +203,8 @@ vector<myKeyPoint> SiftDetector::orientation_assignment_for_octave(int oct, cons
 				int cur_x = x + ox, cur_y = y + oy;
 				if (cur_x < 0 || cur_x >= L.cols || cur_y < 0 || cur_y >= L.rows) continue;
 				
-				float dx = getValueOfMatrix(L, min(cur_y + 1, L.rows - 1), cur_x) - getValueOfMatrix(L, max(cur_y - 1, 0), cur_x),
-					dy = getValueOfMatrix(L, cur_y, min(cur_x + 1, L.cols - 1)) - getValueOfMatrix(L, cur_y, max(cur_x - 1, 0));
+				float dy = getValueOfMatrix(L, min(cur_y + 1, L.rows - 1), cur_x) - getValueOfMatrix(L, max(cur_y - 1, 0), cur_x),
+					dx = getValueOfMatrix(L, cur_y, min(cur_x + 1, L.cols - 1)) - getValueOfMatrix(L, cur_y, max(cur_x - 1, 0));
 				float magnitude = sqrt(dx*dx + dy*dy), PI = 2 * acos(0);
 				float theta = atan2(dy, dx) * 180 / PI;
 				if (theta < 0) theta += 180;
@@ -220,11 +220,11 @@ vector<myKeyPoint> SiftDetector::orientation_assignment_for_octave(int oct, cons
 
 		orientation_kpts.push_back(myKeyPoint(point.y_image, point.x_image, point.octave_index, point.layer_index, fit_parabol(hist, mx_bin, binwidth)));
 
-		for (int i=0;i<hist.size();++i){
-			if (i == mx_bin) continue;
-			if (0.85 * mx_hist < hist[i])
-				orientation_kpts.push_back(myKeyPoint(point.y_image, point.x_image, point.octave_index, point.layer_index, fit_parabol(hist, mx_bin, binwidth)));
-		}
+		//for (int i=0;i<hist.size();++i){
+		//	if (i == mx_bin) continue;
+		//	if (0.95 * mx_hist < hist[i])
+		//		orientation_kpts.push_back(myKeyPoint(point.y_image, point.x_image, point.octave_index, point.layer_index, fit_parabol(hist, mx_bin, binwidth)));
+		//}
 
 	}
 
@@ -250,7 +250,80 @@ float SiftDetector::fit_parabol(const vector<float> &hist, int mx_bin, int binwi
 	return -x.at<float>(1) / (2 * x.at<float>(0));
 }
 
-void SiftDetector::siftDetector(const Mat &source, int num_octaves, int num_scale_signma, float signma, float thresh_edge, float thresh_contrast, int windowSize){
+void SiftDetector::get_local_descriptors(int oct, const vector<vector<Mat>> &DoG_pyramid, vector<vector<myKeyPoint>> &orient_keypoint, int window_size, int num_subregions, int num_bins) {
+	int n_layer = DoG_pyramid[oct].size(), binwidth = 360 / num_bins;
+
+	for (myKeyPoint &point : orient_keypoint[oct]) {
+		int y = (int)point.y_image, x = (int)point.x_image, s = (int)point.layer_index;
+		(s < 0) ? (s = 0) : ((s >= n_layer) ? (n_layer - 1) : s);
+		
+		Mat L = DoG_pyramid[oct][s];
+
+		int t = max(0, y - window_size / 2), b = min(L.rows - 1, y + window_size / 2);
+		int l = max(0, x - window_size / 2), r = min(L.cols - 1, x + window_size / 2);
+
+		int size_of_kernel = min(b - t + 1, r - l + 1);
+		(size_of_kernel % 2 == 0) ? (++size_of_kernel) : (1);
+
+		Mat kernel = createGaussianKernel(size_of_kernel, window_size / 6.0, true, false);
+
+		int subregion_window = window_size / num_subregions;
+		vector<vector<float>> hist(subregion_window * subregion_window, vector<float>(num_bins, 0));
+
+		for (int yy = t; yy <= b; ++yy) {
+			for (int xx = l; xx <= r; ++xx) {
+				float dx, dy;
+				dy = getValueOfMatrix(L, min(yy + 1, L.rows - 1), xx) - getValueOfMatrix(L, max(yy - 1, 0), xx);
+				dx = getValueOfMatrix(L, yy, min(xx + 1, L.cols - 1)) - getValueOfMatrix(L, yy, max(xx - 1, 0));
+
+				float magnitude = sqrt(dx*dx + dy*dy), PI = 2 * acos(0);
+				float theta = atan2(dy, dx) * 180 / PI;
+				if (theta < 0) theta += 180;
+
+				float weight = getValueOfMatrix(kernel, yy - t, xx - l) * magnitude;
+				int bin = (int)floor(theta) / binwidth;
+
+				hist[min((yy - t) / 4, 3) * 4 + min((xx - l) / 4, 3)][bin] += weight;
+				
+				Mat feature = Mat::zeros(num_bins * num_subregions * num_subregions, 1, CV_32FC1);
+
+				for (int i = 0; i < num_subregions * num_subregions; ++i) {
+					for (int j = 0; j < num_bins; ++j) {
+						feature.at<float>(i * num_bins + j, 0) += hist[i][j];
+						//cout << feature.at<float>(i * num_bins + j, 0) << endl;
+					}
+				}
+
+				feature /= max(1e-6, norm(feature, NORM_L1));
+				for (int i = 0; i < feature.rows; ++i) 
+					if (feature.at<float>(i, 0) > 0.2)
+						feature.at<float>(i, 0) = 0.2;
+				feature /= max(1e-6, norm(feature, NORM_L1));
+			
+				point.feature = feature;
+			}
+		}
+	}
+}
+
+void SiftDetector::writingKeyPointToFile(const string &filename, const vector<vector<myKeyPoint>> &key_points) {
+	ofstream outfile;
+	outfile.open(filename);
+	for (int oct = 0; oct < key_points.size(); ++oct) {
+		for (myKeyPoint point : key_points[oct]) {
+			outfile << point.octave_index << " " << point.layer_index << " " << point.y_image << " " << point.x_image
+				<< " " << point.hist_parabol_extrema << '\n';
+
+			for (int j = 0; j < point.feature.rows; ++j)
+				outfile << point.feature.at<float>(j, 0) << " ";
+			outfile << '\n';
+		}
+	}
+	cout << "Successful! Your keypoint traits have been written to " << filename << '\n';
+	outfile.close();
+}
+
+vector<vector<myKeyPoint>> SiftDetector::siftDetector(const Mat &source, int num_octaves, int num_scale_signma, float signma, float thresh_edge, float thresh_contrast, int windowSize){
 	Mat image = source.clone();
 	/* Step 1: Convert Image to GrayScale, Blur and Double the Image */
 	Mat srcGray = convertToGrayScale(image);
@@ -296,11 +369,15 @@ void SiftDetector::siftDetector(const Mat &source, int num_octaves, int num_scal
 	for (int oct = 0; oct < num_octaves; ++oct) 
 		for (myKeyPoint kpts : orientation_assignment_for_octave(oct, DoG_pyramid, keyPoints, num_bins))
 			keyPoints_orientation[oct].push_back(kpts);
-
 	
 	/* Step 7: Get Keypoint Local Descriptor -> return: 128 long feature vector */
 
+	for (int oct = 0; oct < num_octaves; ++oct)
+		get_local_descriptors(oct, DoG_pyramid, keyPoints_orientation, windowSize);
 
+	return keyPoints_orientation;
+
+	/* Some workspace below: */
 
 
 

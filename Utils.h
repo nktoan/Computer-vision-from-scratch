@@ -10,6 +10,7 @@
 #include<cmath>
 #include<vector>
 #include<set>
+#include<fstream>
 #include"Libraries/Headers/opencv2/imgproc/imgproc.hpp"
 #include"Libraries/Headers/opencv2/highgui/highgui.hpp"
 
