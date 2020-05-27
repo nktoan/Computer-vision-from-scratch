@@ -5,7 +5,7 @@
 
 #include "Harris.h"
 
-void HarrisDetector::detectHarris(const Mat &source, float k, float thresh) {
+void HarrisDetector::detectHarris(const Mat &source, bool wait_Key, float k, float thresh) {
 	/* Step 1: Convert Image to GrayScale */
 	Mat srcGray = convertToGrayScale(source);
 
@@ -99,7 +99,9 @@ void HarrisDetector::detectHarris(const Mat &source, float k, float thresh) {
 	/* Step 8: Show corner image */
 	namedWindow("cornersDetector_Harris");
 	imshow("cornersDetector_Harris", dst);
-	waitKey(0);
+	if (wait_Key) waitKey(0);
+	else 
+		_sleep(5000);
 
 	/* Step 9: Store result (Optional) */
 

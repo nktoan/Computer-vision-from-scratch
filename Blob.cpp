@@ -5,7 +5,7 @@
 
 #include "Blob.h"
 
-void BlobDetector::detectBlob(const Mat &source, float signma, float k, float thresholdMax) {
+void BlobDetector::detectBlob(const Mat &source, bool wait_Key, float signma, float k, float thresholdMax) {
 	/* Step 1: Convert Image to GrayScale */
 	Mat srcGray = convertToGrayScale(source);
 
@@ -78,10 +78,11 @@ void BlobDetector::detectBlob(const Mat &source, float signma, float k, float th
 	/* Step 6: Show the blob image */
 	namedWindow("Blob_detector");
 	imshow("Blob_detector", dst);
-	waitKey(0);
-
+	if (wait_Key) waitKey(0);
+	else
+		_sleep(5000);
 }
-void BlobDetector::detectDOG(const Mat &source, float signma, float k, float thresholdMax) {
+void BlobDetector::detectDOG(const Mat &source, bool wait_Key, float signma, float k, float thresholdMax) {
 	/* Step 1: Convert Image to GrayScale */
 	Mat srcGray = convertToGrayScale(source);
 
@@ -154,5 +155,7 @@ void BlobDetector::detectDOG(const Mat &source, float signma, float k, float thr
 	/* Step 6: Show the blob image */
 	namedWindow("DOG_detector");
 	imshow("DOG_detector", dst);
-	waitKey(0);
+	if (wait_Key) waitKey(0);
+	else
+		_sleep(5000);
 }

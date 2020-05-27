@@ -37,7 +37,7 @@ private:
 
 	void get_local_descriptors(int oct, const vector<vector<Mat>> &DoG_pyramid, vector<vector<myKeyPoint>> &orientation_keypoint, int window_size = 16, int num_subregion = 4, int num_bin = 8);
 public:
-	vector<vector<myKeyPoint>> siftDetector(const Mat &source, int num_octaves = 4, int num_scale_signma = 5, float signma = 1.6, float thresh_edge = 10, float thresh_contrast = 0.03, int windowSize = 16);
+	vector<vector<myKeyPoint>> siftDetector(const Mat &source, bool wait_Key = true, int num_octaves = 4, int num_scale_signma = 5, float signma = 1.6, float thresh_edge = 10, float thresh_contrast = 0.03, int windowSize = 16);
 	void writingKeyPointToFile(const string &filename, const vector<vector<myKeyPoint>> &key_points);
 };
 

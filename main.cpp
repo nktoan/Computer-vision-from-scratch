@@ -16,21 +16,25 @@ int main(int argc, char** argv)
 	cout << "The input image information: ";
 	printMatrixInfo(src);
 
-	vector<vector<myKeyPoint>> key_points;
-
+	BlobDetector blobDetector;
+	HarrisDetector harrisDetector;
 	SiftDetector siftDetector;
+
+	//bool wait_key = false;
+	/* 1. Detect Corner using Harris Detector */
+	harrisDetector.detectHarris(src);
+
+	/* 2. Detect Blob using Blob, DoG Detector (blob slace space detection) */
+	blobDetector.detectBlob(src);
+
+	blobDetector.detectDOG(src);
+
+	/* 3. Extrace SIFT features from Image */
+	vector<vector<myKeyPoint>> key_points;	
 	key_points = siftDetector.siftDetector(src);
+
 	string file_name = image_name + ".txt";
-
 	siftDetector.writingKeyPointToFile(file_name, key_points);
-
-	//siftDetector.siftDetector(src);
-
-	//BlobDetector blobDetector;
-	//HarrisDetector harrisDetector;
-
-	//blobDetector.detectBlob(src);
-	//harrisDetector.detectHarris(src);
 
 	return 0;
 }

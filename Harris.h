@@ -21,7 +21,7 @@ public:
 };
 class HarrisDetector {
 public:
-	void detectHarris(const Mat &source, float k = 0.05, float thresh = 0.01);
+	void detectHarris(const Mat &source, bool wait_Key = true, float k = 0.05, float thresh = 0.01);
 };
 
 #endif

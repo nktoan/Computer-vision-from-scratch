@@ -332,7 +332,7 @@ void SiftDetector::writingKeyPointToFile(const string &filename, const vector<ve
 	outfile.close();
 }
 
-vector<vector<myKeyPoint>> SiftDetector::siftDetector(const Mat &source, int num_octaves, int num_scale_signma, float signma, float thresh_edge, float thresh_contrast, int windowSize){
+vector<vector<myKeyPoint>> SiftDetector::siftDetector(const Mat &source, bool wait_Key, int num_octaves, int num_scale_signma, float signma, float thresh_edge, float thresh_contrast, int windowSize){
 	Mat image = source.clone();
 	/* Step 1: Convert Image to GrayScale, Blur and Double the Image */
 	Mat srcGray = convertToGrayScale(image);
@@ -399,7 +399,9 @@ vector<vector<myKeyPoint>> SiftDetector::siftDetector(const Mat &source, int num
 	/* Step n+1: Show the KeyPoints image */
 	namedWindow("Sift_Detector");
 	imshow("Sift_Detector", dst);
-	waitKey(0);
+	if (wait_Key) waitKey(0);
+	else
+		_sleep(5000);
 
 	return keyPoints_orientation;
 }
