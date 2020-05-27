@@ -61,37 +61,40 @@ void HarrisDetector::detectHarris(const Mat &source, float k, float thresh) {
 			   6.2. Non-maximum Suppression to suppress some consecutive corner-point within Distance range.
 			   -> output set<pair<int,int>>: nms_corner_points */
 	//6.1
-	set<pair<int, int>> corner_points;
+	vector<CornerPoint> corner_points;
 
 	for (int y = 0; y < R.rows; ++y) {
 		for (int x = 0; x < R.cols; ++x) {
 			float r_val = getValueOfMatrix(R, y, x);
 			if (r_val > thresh * r_max)
-				corner_points.insert(make_pair(y, x));
+				corner_points.push_back(CornerPoint(r_val, y, x));
 		}
 	}
+	sort(corner_points.begin(), corner_points.end());
+	reverse(corner_points.begin(), corner_points.end());
+
 	//6.2
 	int distance = 10;
-	set<pair<int, int>> nms_corner_points;
+	vector<CornerPoint> nms_corner_points;
 
-	for (pair<int, int> point_1 : corner_points) {
+	for (CornerPoint point_1 : corner_points) {
 		if (nms_corner_points.size() > 0) {
 			bool not_found = true;
-			for (pair<int, int> point_2 : nms_corner_points) 
-				not_found &= (abs(point_1.first - point_2.first) >= distance) || (abs(point_1.second - point_2.second) >= distance);
+			for (CornerPoint point_2 : nms_corner_points)
+				not_found &= (abs(point_1.x - point_2.x) >= distance) || (abs(point_1.y - point_2.y) >= distance);
 			
 			if (not_found == true) 
-				nms_corner_points.insert(point_1);
+				nms_corner_points.push_back(point_1);
 		}
 		else 
-			nms_corner_points.insert(point_1);
+			nms_corner_points.push_back(point_1);
 	}
 
 	/* Step 7: Draw the corners */
 	
 	Mat dst = source.clone();
-	for (pair<int, int> point : nms_corner_points)
-		circle(dst, Point(point.second, point.first), 4, Scalar(0, 0, 255), 2, 8, 0);//(y,x) -> Point(x,y)
+	for (CornerPoint point : nms_corner_points)
+		circle(dst, Point(point.x, point.y), 4, Scalar(0, 0, 255), 2, 8, 0);//(y,x) -> Point(x,y)
 
 	/* Step 8: Show corner image */
 	namedWindow("cornersDetector_Harris");

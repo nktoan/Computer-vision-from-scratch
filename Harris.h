@@ -8,6 +8,17 @@
 
 #include"Utils.h"
 
+class CornerPoint {
+public:
+	float r_value;
+	int x, y;
+public:
+	CornerPoint(float r_val, int y_val, int x_val) : r_value(r_val), y(y_val), x(x_val) {};
+
+	bool operator < (const CornerPoint &other) {
+		return r_value < other.r_value;
+	}
+};
 class HarrisDetector {
 public:
 	void detectHarris(const Mat &source, float k = 0.05, float thresh = 0.01);
