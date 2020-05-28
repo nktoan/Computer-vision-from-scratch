@@ -5,7 +5,7 @@
 
 #include "Harris.h"
 
-void HarrisDetector::detectHarris(const Mat &source, bool wait_Key, float k, float thresh) {
+void HarrisDetector::detectHarris(const Mat &source, bool is_show, bool wait_Key, float k, float thresh) {
 	/* Step 1: Convert Image to GrayScale */
 	Mat srcGray = convertToGrayScale(source);
 
@@ -89,20 +89,21 @@ void HarrisDetector::detectHarris(const Mat &source, bool wait_Key, float k, flo
 		else 
 			nms_corner_points.push_back(point_1);
 	}
-
-	/* Step 7: Draw the corners */
 	
-	Mat dst = source.clone();
-	for (CornerPoint point : nms_corner_points)
-		circle(dst, Point(point.x, point.y), 4, Scalar(0, 0, 255), 2, 8, 0);//(y,x) -> Point(x,y)
+	if (is_show) {
+		/* Step 7: Draw the corners */
 
-	/* Step 8: Show corner image */
-	namedWindow("cornersDetector_Harris");
-	imshow("cornersDetector_Harris", dst);
-	if (wait_Key) waitKey(0);
-	else 
-		_sleep(5000);
+		Mat dst = source.clone();
+		for (CornerPoint point : nms_corner_points)
+			circle(dst, Point(point.x, point.y), 4, Scalar(0, 0, 255), 2, 8, 0);//(y,x) -> Point(x,y)
 
+		/* Step 8: Show corner image */
+		namedWindow("cornersDetector_Harris");
+		imshow("cornersDetector_Harris", dst);
+		if (wait_Key) waitKey(0);
+		else
+			_sleep(5000);
+	}
 	/* Step 9: Store result (Optional) */
 
 	//printMatrixInfo(dst);

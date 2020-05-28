@@ -5,7 +5,7 @@
 
 #include "Blob.h"
 
-void BlobDetector::detectBlob(const Mat &source, bool wait_Key, float signma, float k, float thresholdMax) {
+void BlobDetector::detectBlob(const Mat &source, bool is_show, bool wait_Key, float signma, float k, float thresholdMax) {
 	/* Step 1: Convert Image to GrayScale */
 	Mat srcGray = convertToGrayScale(source);
 
@@ -70,19 +70,21 @@ void BlobDetector::detectBlob(const Mat &source, bool wait_Key, float signma, fl
 
 	/* Step 4: NMS */
 
-	/* Step 5: Draw the blobs */
-	Mat dst = source.clone();
-	for (tuple<int, int, float> point : blob_points)
-		circle(dst, Point(get<1>(point), get<0>(point)), get<2>(point) * sqrt(2), Scalar(0, 0, 255), 2, 8, 0);//(y,x) -> Point(x,y)
+	if (is_show) {
+		/* Step 5: Draw the blobs */
+		Mat dst = source.clone();
+		for (tuple<int, int, float> point : blob_points)
+			circle(dst, Point(get<1>(point), get<0>(point)), get<2>(point) * sqrt(2), Scalar(0, 0, 255), 2, 8, 0);//(y,x) -> Point(x,y)
 
-	/* Step 6: Show the blob image */
-	namedWindow("Blob_detector");
-	imshow("Blob_detector", dst);
-	if (wait_Key) waitKey(0);
-	else
-		_sleep(5000);
+		/* Step 6: Show the blob image */
+		namedWindow("Blob_detector");
+		imshow("Blob_detector", dst);
+		if (wait_Key) waitKey(0);
+		else
+			_sleep(5000);
+	}
 }
-void BlobDetector::detectDOG(const Mat &source, bool wait_Key, float signma, float k, float thresholdMax) {
+void BlobDetector::detectDOG(const Mat &source, bool is_show, bool wait_Key, float signma, float k, float thresholdMax) {
 	/* Step 1: Convert Image to GrayScale */
 	Mat srcGray = convertToGrayScale(source);
 
@@ -147,15 +149,17 @@ void BlobDetector::detectDOG(const Mat &source, bool wait_Key, float signma, flo
 
 	/* Step 4: NMS */
 
-	/* Step 5: Draw the blobs */
-	Mat dst = source.clone();
-	for (tuple<int, int, float> point : blob_points)
-		circle(dst, Point(get<1>(point), get<0>(point)), get<2>(point) * sqrt(2), Scalar(0, 0, 255), 2, 8, 0);//(y,x) -> Point(x,y)
+	if (is_show) {
+		/* Step 5: Draw the blobs */
+		Mat dst = source.clone();
+		for (tuple<int, int, float> point : blob_points)
+			circle(dst, Point(get<1>(point), get<0>(point)), get<2>(point) * sqrt(2), Scalar(0, 0, 255), 2, 8, 0);//(y,x) -> Point(x,y)
 
-	/* Step 6: Show the blob image */
-	namedWindow("DOG_detector");
-	imshow("DOG_detector", dst);
-	if (wait_Key) waitKey(0);
-	else
-		_sleep(5000);
+		/* Step 6: Show the blob image */
+		namedWindow("DOG_detector");
+		imshow("DOG_detector", dst);
+		if (wait_Key) waitKey(0);
+		else
+			_sleep(5000);
+	}
 }

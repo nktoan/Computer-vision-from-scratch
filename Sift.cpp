@@ -16,7 +16,7 @@ vector<vector<Mat>> SiftDetector::generate_gaussian_pyramid(const Mat &source, i
 		gaussian_pyramid.push_back(octave);
 
 		src = source.clone();
-		
+
 		//signma_change = signma_change / (k * k);
 		float scale_x, scale_y;
 		scale_x = scale_y = pow(0.5, i + 1);
@@ -101,7 +101,7 @@ vector<myKeyPoint> SiftDetector::extrema_detection_octave(int oct, const vector<
 	return ktps_vec;
 }
 
-vector<myKeyPoint> SiftDetector::localise_keypoint_for_octave(int oct, const vector<vector<Mat>> &DoG_pyramid, const vector<vector<myKeyPoint>> &Extrema, float thresh_edge, float thresh_contrast){
+vector<myKeyPoint> SiftDetector::localise_keypoint_for_octave(int oct, const vector<vector<Mat>> &DoG_pyramid, const vector<vector<myKeyPoint>> &Extrema, float thresh_edge, float thresh_contrast) {
 	vector<myKeyPoint> key_points;
 	int n_layer = DoG_pyramid[oct].size();
 
@@ -114,12 +114,12 @@ vector<myKeyPoint> SiftDetector::localise_keypoint_for_octave(int oct, const vec
 		dxx = getValueOfMatrix(DoG_pyramid[oct][s], y, x + 1) - 2.0 * getValueOfMatrix(DoG_pyramid[oct][s], y, x) + getValueOfMatrix(DoG_pyramid[oct][s], y, x - 1);
 		dyy = getValueOfMatrix(DoG_pyramid[oct][s], y + 1, x) - 2.0 * getValueOfMatrix(DoG_pyramid[oct][s], y, x) + getValueOfMatrix(DoG_pyramid[oct][s], y - 1, x);
 		dxy = ((getValueOfMatrix(DoG_pyramid[oct][s], y + 1, x + 1) - getValueOfMatrix(DoG_pyramid[oct][s], y + 1, x - 1))
-				- (getValueOfMatrix(DoG_pyramid[oct][s], y - 1, x + 1) - getValueOfMatrix(DoG_pyramid[oct][s], y - 1, x - 1))) / 4.0;
+			- (getValueOfMatrix(DoG_pyramid[oct][s], y - 1, x + 1) - getValueOfMatrix(DoG_pyramid[oct][s], y - 1, x - 1))) / 4.0;
 		if (s + 1 >= n_layer) {
 			ds = -1.0 * getValueOfMatrix(DoG_pyramid[oct][s - 1], y, x) / 2.0;
 			dxs = -1.0 * (getValueOfMatrix(DoG_pyramid[oct][s - 1], y, x + 1) - getValueOfMatrix(DoG_pyramid[oct][s - 1], y, x - 1)) / 4.0;
 			dys = -1.0 * (getValueOfMatrix(DoG_pyramid[oct][s - 1], y + 1, x) - getValueOfMatrix(DoG_pyramid[oct][s - 1], y - 1, x)) / 4.0;
-			dss =  - 2.0 * getValueOfMatrix(DoG_pyramid[oct][s], y, x) + getValueOfMatrix(DoG_pyramid[oct][s - 1], y, x);
+			dss = -2.0 * getValueOfMatrix(DoG_pyramid[oct][s], y, x) + getValueOfMatrix(DoG_pyramid[oct][s - 1], y, x);
 		}
 		else if (s - 1 < 0) {
 			ds = getValueOfMatrix(DoG_pyramid[oct][s + 1], y, x) / 2.0;
@@ -163,7 +163,8 @@ vector<myKeyPoint> SiftDetector::localise_keypoint_for_octave(int oct, const vec
 		point.y_image += offset_mat.at<float>(1, 0);
 		point.layer_index += offset_mat.at<float>(2, 0);
 
-		key_points.push_back(point);
+		if (point.x_image >= 0 && point.y_image >=0)
+			key_points.push_back(point);
 	}
 	return key_points;
 }
@@ -173,13 +174,11 @@ float SiftDetector::getSignma(int oct, int layer, float signma, int num_octaves,
 	vector<vector<float>> signma_vect(oct, vector<float>(layer, 0));
 	float signma_change = signma, k = pow(2, 1.0 / (num_layers - 1));
 	signma_vect[0][0] = signma;
-
 	for (int i = 0; i < num_octaves; ++i)
-		for (int j = 0; j < num_layers; ++j) {
-			signma_change = (i == 0 && j == 0) ? (signma_change) : signma_change * k;
-			signma_vect[i][j] = signma_change;
-		}
-
+	for (int j = 0; j < num_layers; ++j) {
+	signma_change = (i == 0 && j == 0) ? (signma_change) : signma_change * k;
+	signma_vect[i][j] = signma_change;
+	}
 	return signma_vect[oct][layer];
 	*/
 	return pow(sqrt(2), layer) * signma;
@@ -190,24 +189,24 @@ vector<myKeyPoint> SiftDetector::orientation_assignment_for_octave(int oct, cons
 
 	int n_layer = DoG_pyramid[oct].size(), binwidth = 360 / num_bins;
 	for (myKeyPoint point : keypoint[oct]) {
-	
-		int y = (int) point.y_image, x = (int) point.x_image, s = (int)point.layer_index;
+
+		int y = (int)point.y_image, x = (int)point.x_image, s = (int)point.layer_index;
 		(s < 0) ? (s = 0) : ((s >= n_layer) ? (s = n_layer - 1) : s);
 		float signma = (s == 0) ? 1.0 : (s * 1.5);
 		int w = int(2 * ceil(signma) + 1);
-		Mat kernel = createGaussianKernel((int)2*w + 1, signma, true, false);
+		Mat kernel = createGaussianKernel((int)2 * w + 1, signma, true, false);
 		Mat L = DoG_pyramid[oct][s];
 
 		vector<float> hist(num_bins, 0);
 
 		int mx_bin = -1;
 		float mx_hist = -1e9;
-	
+
 		for (int oy = -w; oy <= w; ++oy) {
 			for (int ox = -w; ox <= w; ++ox) {
 				int cur_x = x + ox, cur_y = y + oy;
 				if (cur_x < 0 || cur_x >= L.cols || cur_y < 0 || cur_y >= L.rows) continue;
-				
+
 				float dy = getValueOfMatrix(L, min(cur_y + 1, L.rows - 1), cur_x) - getValueOfMatrix(L, max(cur_y - 1, 0), cur_x),
 					dx = getValueOfMatrix(L, cur_y, min(cur_x + 1, L.cols - 1)) - getValueOfMatrix(L, cur_y, max(cur_x - 1, 0));
 				float magnitude = sqrt(dx*dx + dy*dy), PI = 2 * acos(0);
@@ -220,14 +219,16 @@ vector<myKeyPoint> SiftDetector::orientation_assignment_for_octave(int oct, cons
 				assert(bin >= 0 && bin < hist.size());
 
 				hist[bin] += abs(weight);
-				if (hist[bin] > mx_hist) 
+				if (hist[bin] > mx_hist)
 					mx_bin = bin, mx_hist = hist[bin];
 			}
 		}
 
+		if (mx_bin == -1) continue;
+
 		orientation_kpts.push_back(myKeyPoint(point.y_image, point.x_image, point.octave_index, point.layer_index, fit_parabol(hist, mx_bin, binwidth)));
 
-		for (int i=0;i<hist.size();++i){
+		for (int i = 0; i<hist.size(); ++i) {
 			if (i == mx_bin) continue;
 			if (0.8 * mx_hist < hist[i])
 				orientation_kpts.push_back(myKeyPoint(point.y_image, point.x_image, point.octave_index, point.layer_index, fit_parabol(hist, mx_bin, binwidth)));
@@ -238,7 +239,7 @@ vector<myKeyPoint> SiftDetector::orientation_assignment_for_octave(int oct, cons
 
 float SiftDetector::fit_parabol(const vector<float> &hist, int mx_bin, int binwidth) {
 	int centerval, rightval, leftval, n = hist.size();
-	centerval = mx_bin * binwidth + binwidth/2;
+	centerval = mx_bin * binwidth + binwidth / 2;
 	rightval = (mx_bin == n - 1) ? (360 + binwidth / 2) : ((mx_bin + 1) * binwidth + binwidth / 2);
 	leftval = (mx_bin == 0) ? (0 - binwidth / 2) : ((mx_bin - 1) * binwidth + binwidth / 2);
 
@@ -248,9 +249,9 @@ float SiftDetector::fit_parabol(const vector<float> &hist, int mx_bin, int binwi
 	A.at<float>(2, 0) = leftval * leftval, A.at<float>(2, 1) = leftval, A.at<float>(2, 2) = 1;
 
 	Mat b = Mat::zeros(3, 1, CV_32FC1);
-	b.at<float>(0, 0) = hist[mx_bin], 
-	b.at<float>(1, 0) = hist[(mx_bin + 1) % n],
-	b.at<float>(2, 0) = hist[(mx_bin + n - 1) % n];
+	b.at<float>(0, 0) = hist[mx_bin],
+		b.at<float>(1, 0) = hist[(mx_bin + 1) % n],
+		b.at<float>(2, 0) = hist[(mx_bin + n - 1) % n];
 
 	Mat x = A.inv()*b;
 	if (abs(x.at<float>(0) - 0.0) < 1e-6) x.at<float>(0) = 1e-4;
@@ -263,8 +264,11 @@ void SiftDetector::get_local_descriptors(int oct, const vector<vector<Mat>> &DoG
 	for (myKeyPoint &point : orient_keypoint[oct]) {
 		int y = (int)point.y_image, x = (int)point.x_image, s = (int)point.layer_index;
 		(s < 0) ? (s = 0) : ((s >= n_layer) ? (s = n_layer - 1) : s);
-		
+
 		Mat L = DoG_pyramid[oct][s];
+
+		if (y <= (window_size / 2) || y >= (L.rows - window_size / 2 - 1)) continue;
+		if (x <= (window_size / 2) || x >= (L.cols - window_size / 2 - 1)) continue;
 
 		int t = max(0, y - window_size / 2), b = min(L.rows - 1, y + window_size / 2);
 		int l = max(0, x - window_size / 2), r = min(L.cols - 1, x + window_size / 2);
@@ -293,7 +297,7 @@ void SiftDetector::get_local_descriptors(int oct, const vector<vector<Mat>> &DoG
 				assert(bin >= 0 && bin < num_bins);
 
 				hist[min((yy - t) / 4, 3) * 4 + min((xx - l) / 4, 3)][bin] += weight;
-				
+
 				Mat feature = Mat::zeros(num_bins * num_subregions * num_subregions, 1, CV_32FC1);
 
 				for (int i = 0; i < num_subregions * num_subregions; ++i) {
@@ -304,11 +308,11 @@ void SiftDetector::get_local_descriptors(int oct, const vector<vector<Mat>> &DoG
 				}
 
 				feature /= max(1e-6, norm(feature, NORM_L1));
-				for (int i = 0; i < feature.rows; ++i) 
+				for (int i = 0; i < feature.rows; ++i)
 					if (feature.at<float>(i, 0) > 0.2)
 						feature.at<float>(i, 0) = 0.2;
 				feature /= max(1e-6, norm(feature, NORM_L1));
-			
+
 				point.feature = feature;
 			}
 		}
@@ -332,15 +336,20 @@ void SiftDetector::writingKeyPointToFile(const string &filename, const vector<ve
 	outfile.close();
 }
 
-vector<vector<myKeyPoint>> SiftDetector::siftDetector(const Mat &source, bool wait_Key, int num_octaves, int num_scale_signma, float signma, float thresh_edge, float thresh_contrast, int windowSize){
+vector<vector<myKeyPoint>> SiftDetector::siftDetector(const Mat &source, bool is_show, bool wait_Key, int num_octaves, int num_scale_signma, float signma, float thresh_edge, float thresh_contrast, int windowSize) {
 	Mat image = source.clone();
 	/* Step 1: Convert Image to GrayScale, Blur and Double the Image */
 	Mat srcGray = convertToGrayScale(image);
 
 	filter2D(srcGray, srcGray, -1, createGaussianKernel(5, 1.3));
-	
-	resize(srcGray, srcGray, cv::Size(), 2.0, 2.0, INTER_LINEAR);
-	
+
+	int original_size = 0;
+
+	if (srcGray.rows < 500 && srcGray.cols < 500) {
+		resize(srcGray, srcGray, cv::Size(), 2.0, 2.0, INTER_LINEAR);
+		original_size = 1;
+	}
+
 	/* Step 2: Generate Gaussian Pyramid */
 	vector<vector<Mat>> gaussian_pyramid = generate_gaussian_pyramid(srcGray, num_octaves, num_scale_signma, signma);
 
@@ -358,7 +367,7 @@ vector<vector<myKeyPoint>> SiftDetector::siftDetector(const Mat &source, bool wa
 	/* Step 4: Extrema Detection */
 	vector<vector<myKeyPoint>> Extrema(num_octaves);
 	float threshold_max = 0.3;
-	
+
 	for (int oct = 0; oct < num_octaves; ++oct)
 		for (myKeyPoint kpts : extrema_detection_octave(oct, DoG_pyramid, max_squared_DoG_pyramid, windowSize, threshold_max))
 			Extrema[oct].push_back(kpts);
@@ -374,7 +383,7 @@ vector<vector<myKeyPoint>> SiftDetector::siftDetector(const Mat &source, bool wa
 	int num_bins = 36;
 	vector<vector<myKeyPoint>> keyPoints_orientation(num_octaves);
 
-	for (int oct = 0; oct < num_octaves; ++oct) 
+	for (int oct = 0; oct < num_octaves; ++oct)
 		for (myKeyPoint kpts : orientation_assignment_for_octave(oct, DoG_pyramid, keyPoints, num_bins))
 			keyPoints_orientation[oct].push_back(kpts);
 
@@ -388,20 +397,100 @@ vector<vector<myKeyPoint>> SiftDetector::siftDetector(const Mat &source, bool wa
 	/* Some workspace below: */
 
 	/* Step n: Draw the KeyPoints */
-	Mat dst = source.clone();
-	for (int oct = 0; oct < num_octaves; ++oct) {
-		for (myKeyPoint points : keyPoints_orientation[oct])
-			if (oct == 1) 
-				circle(dst, Point(points.x_image, points.y_image), sqrt(2), Scalar(0, 0, 255), 2, 8, 0);//(y,x) -> Point(x,y)
-				//cout << points.x_image << " " << points.y_image << endl;
-		cout << "Choose : " << keyPoints_orientation[oct].size() << " points from octave " << oct << endl;
+	if (is_show) {
+		Mat dst = source.clone();
+		for (int oct = 0; oct < num_octaves; ++oct) {
+			for (myKeyPoint points : keyPoints_orientation[oct])
+				if (oct == original_size)
+					circle(dst, Point(points.x_image, points.y_image), sqrt(2), Scalar(0, 0, 255), 2, 8, 0);//(y,x) -> Point(x,y)
+			cout << "Choose : " << keyPoints_orientation[oct].size() << " points from octave " << oct << endl;
+		}
+		/* Step n+1: Show the KeyPoints image */
+		namedWindow("Sift_Detector");
+		imshow("Sift_Detector", dst);
+		if (wait_Key) waitKey(0);
+		else
+			_sleep(5000);
 	}
-	/* Step n+1: Show the KeyPoints image */
-	namedWindow("Sift_Detector");
-	imshow("Sift_Detector", dst);
-	if (wait_Key) waitKey(0);
-	else
-		_sleep(5000);
-
 	return keyPoints_orientation;
+}
+
+bool SiftDetector::matchingTwoImages(const Mat &imgTrain, const Mat &imgTest, bool is_show) {
+	vector<vector<myKeyPoint>> key_points_train, key_points_test;
+
+	vector<KeyPoint> kp_train, kp_test;
+	vector<Mat> descriptors_train, descriptors_test;
+
+	int original_size_train = 0, original_size_test = 0;
+
+	if (imgTrain.rows < 500 && imgTrain.cols < 500) 
+		original_size_train = 1;
+	if (imgTest.rows < 500 && imgTest.cols < 500)
+		original_size_test = 1;
+	
+	bool is_show_siftDetector = false;
+
+	/* Step 1: Extract keypoints and descriptors of keypoints in Train Image and Test Image */
+	key_points_train = siftDetector(imgTrain, is_show_siftDetector);
+
+	for (int j = 0; j < key_points_train[original_size_train].size(); ++j) {
+		descriptors_train.push_back(key_points_train[original_size_train][j].feature);
+		KeyPoint kp;
+		kp.pt = Point(key_points_train[original_size_train][j].x_image, key_points_train[original_size_train][j].y_image);
+		kp_train.push_back(kp);
+	}
+
+	key_points_test = siftDetector(imgTest, is_show_siftDetector);
+	for (int j = 0; j < key_points_test[original_size_test].size(); ++j) {
+		descriptors_train.push_back(key_points_test[original_size_test][j].feature);
+		KeyPoint kp;
+		kp.pt = Point(key_points_test[original_size_test][j].x_image, key_points_test[original_size_test][j].y_image);
+		kp_train.push_back(kp);
+	}
+
+	/* Step 2: kNN Matching vectors of train image with vectors of test image */
+
+	int k = 2; //N# of neighbours
+	vector<DMatch> good_matches; //just good_matches
+	vector<vector<DMatch>> matches; //all k-matches with each vector
+	
+	Ptr<DescriptorMatcher> matcher = DescriptorMatcher::create("BruteForce-Hamming");
+	matcher->knnMatch(descriptors_test, descriptors_train, matches, k);
+	
+	/* Step 3: Choosing good matches with threshold using ratio between 1st nearest neighbor and 2nd nearest neighbor */
+	for (int i = 0; i < matches.size(); ++i){
+		if (matches[i].size() >= 1)
+		{
+			const double ratio = 0.8; // As in Lowe's paper; can be tuned
+			if (matches[i][0].distance < ratio * matches[i][1].distance)
+				good_matches.push_back(matches[i][0]);
+		}
+	}
+
+	/* Step 4: Draw matching result */
+	//Mat imgTest_grayScale = convertToGrayScale(imgTest);
+	//Mat imgTrain_grayScale = convertToGrayScale(imgTrain);
+
+	if (is_show) {
+		Mat matching_img;
+		drawMatches(imgTest, kp_test, imgTrain, kp_train, good_matches, matching_img, Scalar_<double>::all(-1), Scalar_<double>::all(-1), vector<char>(), DrawMatchesFlags::NOT_DRAW_SINGLE_POINTS);
+		cout << "The matching_image information: ";
+		printMatrixInfo(matching_img);
+
+		namedWindow("Matching_using_SIFT");
+		//resizeWindow("Matching_using_SIFT", 500, 500
+		if (matching_img.rows >= 800 & matching_img.cols >= 800)
+			resize(matching_img, matching_img, cv::Size(), 0.5, 0.5, INTER_NEAREST);
+		imshow("Matching_using_SIFT", matching_img);
+		waitKey(0);
+	}
+
+	/* Step 5: return result matching or not? */
+	int num_of_matches = good_matches.size();
+	if (1) {
+		return true;
+	}
+	else {
+		return false;
+	}
 }

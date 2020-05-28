@@ -9,32 +9,31 @@
 
 int main(int argc, char** argv)
 {
-	string image_name = "sunflower_small";
-	string image_type = "jpg";
+	string image_name_train = "01_1", image_name_test = "01";
+	string image_type_train = "jpg", image_type_test = "jpg";
 
-	Mat src = imread(image_name + '.' + image_type, IMREAD_COLOR);
-	cout << "The input image information: ";
-	printMatrixInfo(src);
+	Mat src_train = imread(image_name_train + '.' + image_type_train, IMREAD_COLOR);
+	cout << "The input train_image information: ";
+	printMatrixInfo(src_train);
+
+	Mat src_test = imread(image_name_test + '.' + image_type_test, IMREAD_COLOR);
+	cout << "The input test_image information: ";
+	printMatrixInfo(src_test);
 
 	BlobDetector blobDetector;
 	HarrisDetector harrisDetector;
 	SiftDetector siftDetector;
 
-	//bool wait_key = false;
 	/* 1. Detect Corner using Harris Detector */
-	harrisDetector.detectHarris(src);
+	//harrisDetector.detectHarris(src);
 
 	/* 2. Detect Blob using Blob, DoG Detector (blob slace space detection) */
-	blobDetector.detectBlob(src);
+	//blobDetector.detectBlob(src);
 
-	blobDetector.detectDOG(src);
+	//blobDetector.detectDOG(src);
 
 	/* 3. Extrace SIFT features from Image */
-	vector<vector<myKeyPoint>> key_points;	
-	key_points = siftDetector.siftDetector(src);
-
-	string file_name = image_name + ".txt";
-	siftDetector.writingKeyPointToFile(file_name, key_points);
+	siftDetector.matchingTwoImages(src_train, src_test);
 
 	return 0;
 }
