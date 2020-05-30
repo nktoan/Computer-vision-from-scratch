@@ -101,7 +101,7 @@ vector<myKeyPoint> SiftDetector::extrema_detection_octave(int oct, const vector<
 	return ktps_vec;
 }
 
-vector<myKeyPoint> SiftDetector::localise_keypoint_for_octave(int oct, const vector<vector<Mat>> &DoG_pyramid, const vector<vector<myKeyPoint>> &Extrema, float thresh_edge, float thresh_contrast) {
+vector<myKeyPoint> SiftDetector::localise_keypoint_for_octave(int oct, const vector<vector<Mat>> &DoG_pyramid, const vector<vector<myKeyPoint>> &Extrema, float thresh_edge, float thresh_contrast, int window_size) {
 	vector<myKeyPoint> key_points;
 	int n_layer = DoG_pyramid[oct].size();
 
@@ -163,8 +163,15 @@ vector<myKeyPoint> SiftDetector::localise_keypoint_for_octave(int oct, const vec
 		point.y_image += offset_mat.at<float>(1, 0);
 		point.layer_index += offset_mat.at<float>(2, 0);
 
-		if (point.x_image >= 0 && point.y_image >= 0)
-			key_points.push_back(point);
+		x = (int)point.x_image;
+		y = (int)point.y_image;
+		s = (int)point.layer_index;
+		(s < 0) ? (s = 0) : ((s >= n_layer) ? (s = n_layer - 1) : s);
+
+		if (y <= (window_size / 2) || y >= (DoG_pyramid[oct][s].rows - window_size / 2 - 1)) continue;
+		if (x <= (window_size / 2) || x >= (DoG_pyramid[oct][s].cols - window_size / 2 - 1)) continue;
+
+		key_points.push_back(point);
 	}
 	return key_points;
 }
@@ -189,7 +196,6 @@ vector<myKeyPoint> SiftDetector::orientation_assignment_for_octave(int oct, cons
 
 	int n_layer = DoG_pyramid[oct].size(), binwidth = 360 / num_bins;
 	for (myKeyPoint point : keypoint[oct]) {
-
 		int y = (int)point.y_image, x = (int)point.x_image, s = (int)point.layer_index;
 		(s < 0) ? (s = 0) : ((s >= n_layer) ? (s = n_layer - 1) : s);
 		float signma = (s == 0) ? 1.0 : (s * 1.5);
@@ -297,25 +303,24 @@ void SiftDetector::get_local_descriptors(int oct, const vector<vector<Mat>> &DoG
 				assert(bin >= 0 && bin < num_bins);
 
 				hist[min((yy - t) / 4, 3) * 4 + min((xx - l) / 4, 3)][bin] += weight;
-
-				Mat feature = Mat::zeros(num_bins * num_subregions * num_subregions, 1, CV_32FC1);
-
-				for (int i = 0; i < num_subregions * num_subregions; ++i) {
-					for (int j = 0; j < num_bins; ++j) {
-						feature.at<float>(i * num_bins + j, 0) += hist[i][j];
-						//cout << feature.at<float>(i * num_bins + j, 0) << endl;
-					}
-				}
-
-				feature /= max(1e-6, norm(feature, NORM_L1));
-				for (int i = 0; i < feature.rows; ++i)
-					if (feature.at<float>(i, 0) > 0.2)
-						feature.at<float>(i, 0) = 0.2;
-				feature /= max(1e-6, norm(feature, NORM_L1));
-
-				point.feature = feature;
 			}
 		}
+		Mat feature = Mat::zeros(num_bins * num_subregions * num_subregions, 1, CV_32FC1);
+
+		for (int i = 0; i < num_subregions * num_subregions; ++i) {
+			for (int j = 0; j < num_bins; ++j) {
+				feature.at<float>(i * num_bins + j, 0) += hist[i][j];
+				//cout << feature.at<float>(i * num_bins + j, 0) << endl;
+			}
+		}
+
+		feature /= max(1e-6, norm(feature, NORM_L1));
+		for (int i = 0; i < feature.rows; ++i)
+			if (feature.at<float>(i, 0) > 0.2)
+				feature.at<float>(i, 0) = 0.2;
+		feature /= max(1e-6, norm(feature, NORM_L1));
+
+		point.feature = feature;
 	}
 }
 
@@ -336,7 +341,7 @@ void SiftDetector::writingKeyPointToFile(const string &filename, const vector<ve
 	outfile.close();
 }
 
-vector<vector<myKeyPoint>> SiftDetector::siftDetector(const Mat &source, bool is_show, bool wait_Key, int num_octaves, int num_scale_signma, float signma, float thresh_edge, float thresh_contrast, int windowSize) {
+vector<vector<myKeyPoint>> SiftDetector::siftDetector(const Mat &source, int num_octaves, int num_scale_signma, float signma, float thresh_edge, float thresh_contrast, int windowSize) {
 	Mat image = source.clone();
 	/* Step 1: Convert Image to GrayScale, Blur and Double the Image */
 	Mat srcGray = convertToGrayScale(image);
@@ -376,7 +381,7 @@ vector<vector<myKeyPoint>> SiftDetector::siftDetector(const Mat &source, bool is
 	vector<vector<myKeyPoint>> keyPoints(num_octaves);
 
 	for (int oct = 0; oct < num_octaves; ++oct)
-		for (myKeyPoint kpts : localise_keypoint_for_octave(oct, DoG_pyramid, Extrema, thresh_edge, thresh_contrast))
+		for (myKeyPoint kpts : localise_keypoint_for_octave(oct, DoG_pyramid, Extrema, thresh_edge, thresh_contrast, windowSize))
 			keyPoints[oct].push_back(kpts);
 
 	/* Step 6: Orientation Assignment */
@@ -395,27 +400,43 @@ vector<vector<myKeyPoint>> SiftDetector::siftDetector(const Mat &source, bool is
 	//return keyPoints_orientation;
 
 	/* Some workspace below: */
+	cout << endl << "The number of Extrema point choosen :" << endl;
+	for (int oct = 0; oct < num_octaves; ++oct)
+		cout << "Choose : " << Extrema[oct].size() << " points from octave " << oct << endl;
 
-	/* Step n: Draw the KeyPoints */
-	if (is_show) {
-		Mat dst = source.clone();
-		for (int oct = 0; oct < num_octaves; ++oct) {
-			for (myKeyPoint points : keyPoints_orientation[oct])
-				if (oct == original_size)
-					circle(dst, Point(points.x_image, points.y_image), sqrt(2), Scalar(0, 0, 255), 2, 8, 0);//(y,x) -> Point(x,y)
-			cout << "Choose : " << keyPoints_orientation[oct].size() << " points from octave " << oct << endl;
-		}
-		/* Step n+1: Show the KeyPoints image */
-		namedWindow("Sift_Detector");
-		imshow("Sift_Detector", dst);
-		if (wait_Key) waitKey(0);
-		else
-			_sleep(5000);
-	}
+	cout << endl << "The number of Key-point after Localize keypoint choosen :" << endl;
+	for (int oct = 0; oct < num_octaves; ++oct)
+		cout << "Choose : " << keyPoints[oct].size() << " points from octave " << oct << endl;
+
+	cout << endl << "The number of Key-point after orientation assignment: " << endl;
+	for (int oct = 0; oct < num_octaves; ++oct)
+		cout << "Choose : " << keyPoints_orientation[oct].size() << " points from octave " << oct << endl;
+
 	return keyPoints_orientation;
 }
 
-bool SiftDetector::matchingTwoImages(const Mat &imgTrain, const Mat &imgTest, bool is_show) {
+void SiftDetector::show_SIFT_key_points(const Mat &source, const vector<vector<myKeyPoint>> &sift_point, bool wait_Key, int num_octaves) {
+	Mat dst = source.clone();
+	int original_size = 0;
+
+	if (dst.rows < 500 && dst.cols < 500)
+		original_size = 1;
+
+	for (int oct = 0; oct < num_octaves; ++oct) {
+		for (myKeyPoint points : sift_point[oct])
+			if (oct == original_size)
+				circle(dst, Point(points.x_image, points.y_image), sqrt(2), Scalar(0, 0, 255), 2, 8, 0);//(y,x) -> Point(x,y)
+		cout << "Choose : " << sift_point[oct].size() << " points from octave " << oct << endl;
+	}
+	/* Step n+1: Show the KeyPoints image */
+	namedWindow("Sift_Detector");
+	imshow("Sift_Detector", dst);
+	if (wait_Key) waitKey(0);
+	else
+		_sleep(5000);
+}
+
+bool SiftDetector::matchingTwoImages(const Mat &imgTrain, const Mat &imgTest, float threshold_matching, int vectorSize, bool is_show) {
 	vector<vector<myKeyPoint>> key_points_train, key_points_test;
 
 	vector<KeyPoint> kp_train, kp_test;
@@ -426,31 +447,34 @@ bool SiftDetector::matchingTwoImages(const Mat &imgTrain, const Mat &imgTest, bo
 		original_size_train = 1;
 	if (imgTest.rows < 500 && imgTest.cols < 500)
 		original_size_test = 1;
-	
-	bool is_show_siftDetector = false;
 
 	/* Step 1: Extract keypoints and descriptors of keypoints in Train Image and Test Image */
-	key_points_train = siftDetector(imgTrain, is_show_siftDetector);
-	key_points_test = siftDetector(imgTest, is_show_siftDetector);
+	key_points_train = siftDetector(imgTrain, 4, 5);
+	key_points_test = siftDetector(imgTest, 4, 5);
 
 	int nums_train_kp = key_points_train[original_size_train].size();
 	int nums_test_kp = key_points_test[original_size_test].size();
 
-	Mat descriptors_train = Mat::zeros(nums_train_kp, 128, CV_32FC1);
-	Mat descriptors_test = Mat::zeros(nums_test_kp, 128, CV_32FC1);
+	Mat descriptors_train = Mat::zeros(nums_train_kp, vectorSize, CV_32FC1);
+	Mat descriptors_test = Mat::zeros(nums_test_kp, vectorSize, CV_32FC1);
 
 	for (int j = 0; j < nums_train_kp; ++j) {
-		for (int i = 0; i < 128; ++i)
+		if (key_points_train[original_size_train][j].feature.rows != vectorSize) //ignore those out of window = 16 range point.
+			continue;
+
+		for (int i = 0; i < vectorSize; ++i)
 			descriptors_train.at<float>(j, i) = key_points_train[original_size_train][j].feature.at<float>(i, 0);
 
 		KeyPoint kp;
 		kp.pt = Point(key_points_train[original_size_train][j].x_image, key_points_train[original_size_train][j].y_image);
 		kp_train.push_back(kp);
 	}
-
-
+	
 	for (int j = 0; j < nums_test_kp; ++j) {
-		for (int i = 0; i < 128; ++i)
+		if (key_points_test[original_size_test][j].feature.rows != vectorSize) //ignore those out of window = 16 range point.
+			continue;
+
+		for (int i = 0; i < vectorSize; ++i)
 			descriptors_test.at<float>(j, i) = key_points_test[original_size_test][j].feature.at<float>(i, 0);
 
 		KeyPoint kp;
@@ -463,10 +487,10 @@ bool SiftDetector::matchingTwoImages(const Mat &imgTrain, const Mat &imgTest, bo
 	int k = 2; //N# of neighbours
 	vector<DMatch> good_matches; //just good_matches
 	vector<vector<DMatch>> matches; //all k-matches with each vector
-	Ptr<DescriptorMatcher> matcher = DescriptorMatcher::create("BruteForce");
+	Ptr<DescriptorMatcher> matcher = DescriptorMatcher::create("BruteForce-L1");
 
 	matcher->knnMatch(descriptors_test, descriptors_train, matches, k);
-	
+
 	/* Step 3: Choosing good matches with threshold using ratio between 1st nearest neighbor and 2nd nearest neighbor */
 	for (int i = 0; i < matches.size(); ++i){
 		if (matches[i].size() > 1)
@@ -482,6 +506,12 @@ bool SiftDetector::matchingTwoImages(const Mat &imgTrain, const Mat &imgTest, bo
 	/* Step 4: Draw matching result */
 	//Mat imgTest_grayScale = convertToGrayScale(imgTest);
 	//Mat imgTrain_grayScale = convertToGrayScale(imgTrain);
+
+	cout << "Keypoint information in image_train: " << endl;
+	show_SIFT_key_points(imgTrain, key_points_train);
+
+	cout << "Keypoint information in image_test: " << endl;
+	show_SIFT_key_points(imgTest, key_points_test);
 
 	if (is_show) {
 		Mat matching_img;
@@ -500,10 +530,9 @@ bool SiftDetector::matchingTwoImages(const Mat &imgTrain, const Mat &imgTest, bo
 	/* Step 5: return result matching or not? */
 	int num_of_matches = good_matches.size();
 	cout << "Number of matching keypoints : " << num_of_matches << endl;
-	if (1) {
+
+	if (num_of_matches >= threshold_matching * min(nums_train_kp, nums_test_kp))
 		return true;
-	}
-	else {
+	else
 		return false;
-	}
 }

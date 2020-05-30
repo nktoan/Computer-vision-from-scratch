@@ -33,7 +33,10 @@ int main(int argc, char** argv)
 	//blobDetector.detectDOG(src);
 
 	/* 3. Extrace SIFT features from Image */
-	siftDetector.matchingTwoImages(src_train, src_test);
+	//if (siftDetector.matchingTwoImages(src_train, src_test))
+	//	cout << "Matching" << endl;
+
+	siftDetector.siftDetector(src_test);
 
 	return 0;
 }
