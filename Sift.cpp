@@ -163,7 +163,7 @@ vector<myKeyPoint> SiftDetector::localise_keypoint_for_octave(int oct, const vec
 		point.y_image += offset_mat.at<float>(1, 0);
 		point.layer_index += offset_mat.at<float>(2, 0);
 
-		if (point.x_image >= 0 && point.y_image >=0)
+		if (point.x_image >= 0 && point.y_image >= 0)
 			key_points.push_back(point);
 	}
 	return key_points;
@@ -419,7 +419,6 @@ bool SiftDetector::matchingTwoImages(const Mat &imgTrain, const Mat &imgTest, bo
 	vector<vector<myKeyPoint>> key_points_train, key_points_test;
 
 	vector<KeyPoint> kp_train, kp_test;
-	vector<Mat> descriptors_train, descriptors_test;
 
 	int original_size_train = 0, original_size_test = 0;
 
@@ -432,20 +431,31 @@ bool SiftDetector::matchingTwoImages(const Mat &imgTrain, const Mat &imgTest, bo
 
 	/* Step 1: Extract keypoints and descriptors of keypoints in Train Image and Test Image */
 	key_points_train = siftDetector(imgTrain, is_show_siftDetector);
+	key_points_test = siftDetector(imgTest, is_show_siftDetector);
 
-	for (int j = 0; j < key_points_train[original_size_train].size(); ++j) {
-		descriptors_train.push_back(key_points_train[original_size_train][j].feature);
+	int nums_train_kp = key_points_train[original_size_train].size();
+	int nums_test_kp = key_points_test[original_size_test].size();
+
+	Mat descriptors_train = Mat::zeros(nums_train_kp, 128, CV_32FC1);
+	Mat descriptors_test = Mat::zeros(nums_test_kp, 128, CV_32FC1);
+
+	for (int j = 0; j < nums_train_kp; ++j) {
+		for (int i = 0; i < 128; ++i)
+			descriptors_train.at<float>(j, i) = key_points_train[original_size_train][j].feature.at<float>(i, 0);
+
 		KeyPoint kp;
 		kp.pt = Point(key_points_train[original_size_train][j].x_image, key_points_train[original_size_train][j].y_image);
 		kp_train.push_back(kp);
 	}
 
-	key_points_test = siftDetector(imgTest, is_show_siftDetector);
-	for (int j = 0; j < key_points_test[original_size_test].size(); ++j) {
-		descriptors_train.push_back(key_points_test[original_size_test][j].feature);
+
+	for (int j = 0; j < nums_test_kp; ++j) {
+		for (int i = 0; i < 128; ++i)
+			descriptors_test.at<float>(j, i) = key_points_test[original_size_test][j].feature.at<float>(i, 0);
+
 		KeyPoint kp;
 		kp.pt = Point(key_points_test[original_size_test][j].x_image, key_points_test[original_size_test][j].y_image);
-		kp_train.push_back(kp);
+		kp_test.push_back(kp);
 	}
 
 	/* Step 2: kNN Matching vectors of train image with vectors of test image */
@@ -453,18 +463,20 @@ bool SiftDetector::matchingTwoImages(const Mat &imgTrain, const Mat &imgTest, bo
 	int k = 2; //N# of neighbours
 	vector<DMatch> good_matches; //just good_matches
 	vector<vector<DMatch>> matches; //all k-matches with each vector
-	
-	Ptr<DescriptorMatcher> matcher = DescriptorMatcher::create("BruteForce-Hamming");
+	Ptr<DescriptorMatcher> matcher = DescriptorMatcher::create("BruteForce");
+
 	matcher->knnMatch(descriptors_test, descriptors_train, matches, k);
 	
 	/* Step 3: Choosing good matches with threshold using ratio between 1st nearest neighbor and 2nd nearest neighbor */
 	for (int i = 0; i < matches.size(); ++i){
-		if (matches[i].size() >= 1)
+		if (matches[i].size() > 1)
 		{
 			const double ratio = 0.8; // As in Lowe's paper; can be tuned
 			if (matches[i][0].distance < ratio * matches[i][1].distance)
 				good_matches.push_back(matches[i][0]);
 		}
+		else if (matches[i].size() == 1)
+			good_matches.push_back(matches[i][0]);
 	}
 
 	/* Step 4: Draw matching result */
@@ -479,7 +491,7 @@ bool SiftDetector::matchingTwoImages(const Mat &imgTrain, const Mat &imgTest, bo
 
 		namedWindow("Matching_using_SIFT");
 		//resizeWindow("Matching_using_SIFT", 500, 500
-		if (matching_img.rows >= 800 & matching_img.cols >= 800)
+		if (matching_img.rows >= 800 && matching_img.cols >= 800)
 			resize(matching_img, matching_img, cv::Size(), 0.5, 0.5, INTER_NEAREST);
 		imshow("Matching_using_SIFT", matching_img);
 		waitKey(0);
@@ -487,6 +499,7 @@ bool SiftDetector::matchingTwoImages(const Mat &imgTrain, const Mat &imgTest, bo
 
 	/* Step 5: return result matching or not? */
 	int num_of_matches = good_matches.size();
+	cout << "Number of matching keypoints : " << num_of_matches << endl;
 	if (1) {
 		return true;
 	}

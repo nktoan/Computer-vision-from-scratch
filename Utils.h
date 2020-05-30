@@ -5,6 +5,7 @@
 
 #ifndef UTILS_H
 #define UTILS_H
+#define OPENCV_TRAITS_ENABLE_DEPRECATED
 
 #include<iostream>
 #include<cmath>
