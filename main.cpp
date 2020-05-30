@@ -9,7 +9,7 @@
 
 int main(int argc, char** argv)
 {
-	string image_name_train = "01_1", image_name_test = "01";
+	string image_name_train = "02_2", image_name_test = "02_3";
 	string image_type_train = "jpg", image_type_test = "jpg";
 
 	Mat src_train = imread(image_name_train + '.' + image_type_train, IMREAD_COLOR);
@@ -33,10 +33,10 @@ int main(int argc, char** argv)
 	//blobDetector.detectDOG(src);
 
 	/* 3. Extrace SIFT features from Image */
-	//if (siftDetector.matchingTwoImages(src_train, src_test))
-	//	cout << "Matching" << endl;
+	if (siftDetector.matchingTwoImages(src_train, src_test, 1))
+		cout << "Matching" << endl;
 
-	siftDetector.siftDetector(src_test);
+	//siftDetector.siftDetector(src_test);
 
 	return 0;
 }

@@ -39,10 +39,10 @@ private:
 public:
 	vector<vector<myKeyPoint>> siftDetector(const Mat &source, int num_octaves = 4, int num_scale_signma = 5, float signma = 1.6, float thresh_edge = 10, float thresh_contrast = 0.03, int windowSize = 16);
 	
-	void show_SIFT_key_points(const Mat &source, const vector<vector<myKeyPoint>> &sift_point, bool wait_Key = true, int num_octaves = 4);
+	void show_SIFT_key_points(const Mat &source, const vector<vector<myKeyPoint>> &sift_point, int original_size, bool wait_Key = true, int num_octaves = 4);
 	void writingKeyPointToFile(const string &filename, const vector<vector<myKeyPoint>> &key_points);
 	
-	bool matchingTwoImages(const Mat &imgTrain, const Mat &imgTest, float threshold_matching = 0.7, int vector_size = 128, bool is_show = true);
+	bool matchingTwoImages(const Mat &imgTrain, const Mat &imgTest, int octave = 0, float threshold_matching = 0.7, int vector_size = 128, bool is_show = true);
 };
 
 

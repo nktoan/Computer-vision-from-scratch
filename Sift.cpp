@@ -397,7 +397,7 @@ vector<vector<myKeyPoint>> SiftDetector::siftDetector(const Mat &source, int num
 	for (int oct = 0; oct < num_octaves; ++oct)
 		get_local_descriptors(oct, DoG_pyramid, keyPoints_orientation, windowSize);
 
-	//return keyPoints_orientation;
+	return keyPoints_orientation;
 
 	/* Some workspace below: */
 	cout << endl << "The number of Extrema point choosen :" << endl;
@@ -415,16 +415,23 @@ vector<vector<myKeyPoint>> SiftDetector::siftDetector(const Mat &source, int num
 	return keyPoints_orientation;
 }
 
-void SiftDetector::show_SIFT_key_points(const Mat &source, const vector<vector<myKeyPoint>> &sift_point, bool wait_Key, int num_octaves) {
+void SiftDetector::show_SIFT_key_points(const Mat &source, const vector<vector<myKeyPoint>> &sift_point, int octave, bool wait_Key, int num_octaves) {
 	Mat dst = source.clone();
-	int original_size = 0;
 
-	if (dst.rows < 500 && dst.cols < 500)
+	int original_size = 0;
+	if (source.rows < 500 && source.cols < 500)
 		original_size = 1;
+
+	if (original_size < octave)
+		for (int scale = 0; scale < (octave - original_size); ++scale)
+			resize(dst, dst, cv::Size(), 0.5, 0.5, INTER_NEAREST);
+	else if (original_size > octave)
+		for (int scale = 0; scale < (original_size - octave); ++scale)
+			resize(dst, dst, cv::Size(), 2.0, 2.0, INTER_LINEAR);
 
 	for (int oct = 0; oct < num_octaves; ++oct) {
 		for (myKeyPoint points : sift_point[oct])
-			if (oct == original_size)
+			if (oct == octave)
 				circle(dst, Point(points.x_image, points.y_image), sqrt(2), Scalar(0, 0, 255), 2, 8, 0);//(y,x) -> Point(x,y)
 		cout << "Choose : " << sift_point[oct].size() << " points from octave " << oct << endl;
 	}
@@ -436,49 +443,41 @@ void SiftDetector::show_SIFT_key_points(const Mat &source, const vector<vector<m
 		_sleep(5000);
 }
 
-bool SiftDetector::matchingTwoImages(const Mat &imgTrain, const Mat &imgTest, float threshold_matching, int vectorSize, bool is_show) {
+bool SiftDetector::matchingTwoImages(const Mat &imgTrain, const Mat &imgTest, int octave, float threshold_matching, int vectorSize, bool is_show) {
 	vector<vector<myKeyPoint>> key_points_train, key_points_test;
-
 	vector<KeyPoint> kp_train, kp_test;
-
-	int original_size_train = 0, original_size_test = 0;
-
-	if (imgTrain.rows < 500 && imgTrain.cols < 500) 
-		original_size_train = 1;
-	if (imgTest.rows < 500 && imgTest.cols < 500)
-		original_size_test = 1;
 
 	/* Step 1: Extract keypoints and descriptors of keypoints in Train Image and Test Image */
 	key_points_train = siftDetector(imgTrain, 4, 5);
 	key_points_test = siftDetector(imgTest, 4, 5);
 
-	int nums_train_kp = key_points_train[original_size_train].size();
-	int nums_test_kp = key_points_test[original_size_test].size();
+	int nums_train_kp = key_points_train[octave].size();
+	int nums_test_kp = key_points_test[octave].size();
 
 	Mat descriptors_train = Mat::zeros(nums_train_kp, vectorSize, CV_32FC1);
 	Mat descriptors_test = Mat::zeros(nums_test_kp, vectorSize, CV_32FC1);
 
 	for (int j = 0; j < nums_train_kp; ++j) {
-		if (key_points_train[original_size_train][j].feature.rows != vectorSize) //ignore those out of window = 16 range point.
+		if (key_points_train[octave][j].feature.rows != vectorSize) //ignore those out of window = 16 range point.
 			continue;
 
 		for (int i = 0; i < vectorSize; ++i)
-			descriptors_train.at<float>(j, i) = key_points_train[original_size_train][j].feature.at<float>(i, 0);
+			descriptors_train.at<float>(j, i) = key_points_train[octave][j].feature.at<float>(i, 0);
 
 		KeyPoint kp;
-		kp.pt = Point(key_points_train[original_size_train][j].x_image, key_points_train[original_size_train][j].y_image);
+		kp.pt = Point(key_points_train[octave][j].x_image, key_points_train[octave][j].y_image);
 		kp_train.push_back(kp);
 	}
 	
 	for (int j = 0; j < nums_test_kp; ++j) {
-		if (key_points_test[original_size_test][j].feature.rows != vectorSize) //ignore those out of window = 16 range point.
+		if (key_points_test[octave][j].feature.rows != vectorSize) //ignore those out of window = 16 range point.
 			continue;
 
 		for (int i = 0; i < vectorSize; ++i)
-			descriptors_test.at<float>(j, i) = key_points_test[original_size_test][j].feature.at<float>(i, 0);
+			descriptors_test.at<float>(j, i) = key_points_test[octave][j].feature.at<float>(i, 0);
 
 		KeyPoint kp;
-		kp.pt = Point(key_points_test[original_size_test][j].x_image, key_points_test[original_size_test][j].y_image);
+		kp.pt = Point(key_points_test[octave][j].x_image, key_points_test[octave][j].y_image);
 		kp_test.push_back(kp);
 	}
 
@@ -503,19 +502,38 @@ bool SiftDetector::matchingTwoImages(const Mat &imgTrain, const Mat &imgTest, fl
 			good_matches.push_back(matches[i][0]);
 	}
 
-	/* Step 4: Draw matching result */
+	/* Step 4: Draw matching result (DEMO) */
 	//Mat imgTest_grayScale = convertToGrayScale(imgTest);
 	//Mat imgTrain_grayScale = convertToGrayScale(imgTrain);
 
 	cout << "Keypoint information in image_train: " << endl;
-	show_SIFT_key_points(imgTrain, key_points_train);
+	show_SIFT_key_points(imgTrain, key_points_train, octave);
 
 	cout << "Keypoint information in image_test: " << endl;
-	show_SIFT_key_points(imgTest, key_points_test);
+	show_SIFT_key_points(imgTest, key_points_test, octave);
+
+	int original_size_train = 0, original_size_test = 0;
+	(imgTrain.rows < 500 && imgTrain.cols < 500) ? (original_size_train = 1) : (1);
+	(imgTest.rows < 500 && imgTest.cols < 500) ? (original_size_test = 1) : (1);
+
+	Mat img_train = imgTrain.clone(), img_test = imgTest.clone();
+	if (original_size_train < octave)
+		for (int scale = 0; scale < (octave - original_size_train); ++scale)
+			resize(img_train, img_train, cv::Size(), 0.5, 0.5, INTER_NEAREST);
+	else if (original_size_train > octave)
+		for (int scale = 0; scale < (original_size_train - octave); ++scale)
+			resize(img_train, img_train, cv::Size(), 2.0, 2.0, INTER_LINEAR);
+
+	if (original_size_test < octave)
+		for (int scale = 0; scale < (octave - original_size_test); ++scale)
+			resize(img_test, img_test, cv::Size(), 0.5, 0.5, INTER_NEAREST);
+	else if (original_size_test > octave)
+		for (int scale = 0; scale < (original_size_test - octave); ++scale)
+			resize(img_test, img_test, cv::Size(), 2.0, 2.0, INTER_LINEAR);
 
 	if (is_show) {
 		Mat matching_img;
-		drawMatches(imgTest, kp_test, imgTrain, kp_train, good_matches, matching_img, Scalar_<double>::all(-1), Scalar_<double>::all(-1), vector<char>(), DrawMatchesFlags::NOT_DRAW_SINGLE_POINTS);
+		drawMatches(img_test, kp_test, img_train, kp_train, good_matches, matching_img, Scalar_<double>::all(-1), Scalar_<double>::all(-1), vector<char>(), DrawMatchesFlags::NOT_DRAW_SINGLE_POINTS);
 		cout << "The matching_image information: ";
 		printMatrixInfo(matching_img);
 
