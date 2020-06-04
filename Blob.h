@@ -10,8 +10,11 @@
 
 class BlobDetector {
 public:
-	void detectBlob(const Mat &source, bool is_show = true, bool wait_Key = true, float signma = 1.0, float k = sqrt(2), float thresholdMax = 0.3);
-	void detectDOG(const Mat &source, bool is_show = true, bool wait_Key = true, float signma = 1.0, float k = sqrt(2), float thresholdMax = 0.3);
+	set<tuple<int, int, float>> detectBlob(const Mat &source, float signma = 1.0, float k = sqrt(2), float thresholdMax = 0.3);
+	void showBlobPoint_BlobDetector(const Mat &source, set<tuple<int, int, float>> blobPoints, bool wait_Key = true);
+
+	set<tuple<int, int, float>> detectDOG(const Mat &source, float signma = 1.0, float k = sqrt(2), float thresholdMax = 0.3);
+	void showBlobPoint_DOGDetector(const Mat &source, set<tuple<int, int, float>> blobPoints, bool wait_Key = true);
 };
 
 #endif

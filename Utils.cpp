@@ -131,8 +131,12 @@ Mat mimusElementWise(const Mat& mat1, const Mat& mat2) {
 	return res;
 }
 
-Mat createLoG_Kernel(int gaussianSize, float signma, bool normalized){
-	assert(gaussianSize % 2 == 1);
+Mat createLoG_Kernel(int gaussianSize, float signma, bool normalized, bool size_with_signma){
+	if (size_with_signma == false)
+		assert(gaussianSize % 2 == 1);
+	else
+		gaussianSize = (int)2 * ceil(3 * signma) + 1;
+
 	Mat LoG_kernel = Mat::zeros(gaussianSize, gaussianSize, CV_32FC1);
 	float sum = 0.0;
 	float var = 2 * signma * signma;
@@ -150,3 +154,4 @@ Mat createLoG_Kernel(int gaussianSize, float signma, bool normalized){
 
 	return LoG_kernel;
 }
+

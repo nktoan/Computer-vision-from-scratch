@@ -5,7 +5,7 @@
 
 #include "Harris.h"
 
-void HarrisDetector::detectHarris(const Mat &source, bool is_show, bool wait_Key, float k, float thresh) {
+vector<CornerPoint> HarrisDetector::detectHarris(const Mat &source, float k, float alpha, float d){
 	/* Step 1: Convert Image to GrayScale */
 	Mat srcGray = convertToGrayScale(source);
 
@@ -66,7 +66,7 @@ void HarrisDetector::detectHarris(const Mat &source, bool is_show, bool wait_Key
 	for (int y = 0; y < R.rows; ++y) {
 		for (int x = 0; x < R.cols; ++x) {
 			float r_val = getValueOfMatrix(R, y, x);
-			if (r_val > thresh * r_max)
+			if (r_val > alpha * r_max)
 				corner_points.push_back(CornerPoint(r_val, y, x));
 		}
 	}
@@ -74,14 +74,13 @@ void HarrisDetector::detectHarris(const Mat &source, bool is_show, bool wait_Key
 	reverse(corner_points.begin(), corner_points.end());
 
 	//6.2
-	int distance = 10;
 	vector<CornerPoint> nms_corner_points;
 
 	for (CornerPoint point_1 : corner_points) {
 		if (nms_corner_points.size() > 0) {
 			bool not_found = true;
 			for (CornerPoint point_2 : nms_corner_points)
-				not_found &= (abs(point_1.x - point_2.x) >= distance) || (abs(point_1.y - point_2.y) >= distance);
+				not_found &= (abs(point_1.x - point_2.x) >= d) || (abs(point_1.y - point_2.y) >= d);
 			
 			if (not_found == true) 
 				nms_corner_points.push_back(point_1);
@@ -89,23 +88,20 @@ void HarrisDetector::detectHarris(const Mat &source, bool is_show, bool wait_Key
 		else 
 			nms_corner_points.push_back(point_1);
 	}
-	
-	if (is_show) {
-		/* Step 7: Draw the corners */
-
-		Mat dst = source.clone();
-		for (CornerPoint point : nms_corner_points)
-			circle(dst, Point(point.x, point.y), 4, Scalar(0, 0, 255), 2, 8, 0);//(y,x) -> Point(x,y)
-
-		/* Step 8: Show corner image */
-		namedWindow("cornersDetector_Harris");
-		imshow("cornersDetector_Harris", dst);
-		if (wait_Key) waitKey(0);
-		else
-			_sleep(5000);
-	}
-	/* Step 9: Store result (Optional) */
+	return nms_corner_points;
+	/* Step 7: Store result (Optional) */
 
 	//printMatrixInfo(dst);
 }
 
+void HarrisDetector::showCornerPoint(const Mat& source, const vector<CornerPoint> &cornerPoints, bool wait_Key) {
+	Mat dst = source.clone();
+	for (CornerPoint point : cornerPoints)
+		circle(dst, Point(point.x, point.y), 4, Scalar(0, 0, 255), 2, 8, 0);//(y,x) -> Point(x,y)
+
+	namedWindow("cornersDetector_Harris");
+	imshow("cornersDetector_Harris", dst);
+	if (wait_Key) waitKey(0);
+	else
+		_sleep(5000);
+}

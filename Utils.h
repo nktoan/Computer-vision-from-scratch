@@ -33,7 +33,7 @@ float getMaxValueOfMatrix(const Mat &source);
 Mat createSobelX();
 Mat createSobelY();
 Mat createGaussianKernel(int gaussianSize = 5, float signma = 1.0, bool divide = true, bool size_with_signma = false);
-Mat createLoG_Kernel(int gaussianSize = 5, float signma = 1.0, bool normalized = false);
+Mat createLoG_Kernel(int gaussianSize = 5, float signma = 1.0, bool normalized = false, bool size_with_signma = false);
 
 Mat multiplyElementWise(const Mat& mat1, const Mat& mat2);
 Mat mimusElementWise(const Mat& mat1, const Mat& mat2);

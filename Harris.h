@@ -21,7 +21,8 @@ public:
 };
 class HarrisDetector {
 public:
-	void detectHarris(const Mat &source, bool is_show = true, bool wait_Key = true, float k = 0.05, float thresh = 0.01);
+	vector<CornerPoint> detectHarris(const Mat &source, float k = 0.05, float alpha = 0.01, float d = 10);
+	void showCornerPoint(const Mat& source, const vector<CornerPoint> &cornerPoints, bool wait_Key = true);
 };
 
 #endif

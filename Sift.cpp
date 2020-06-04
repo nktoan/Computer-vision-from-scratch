@@ -315,10 +315,12 @@ void SiftDetector::get_local_descriptors(int oct, const vector<vector<Mat>> &DoG
 		}
 
 		feature /= max(1e-6, norm(feature, NORM_L1));
+		/*
 		for (int i = 0; i < feature.rows; ++i)
 			if (feature.at<float>(i, 0) > 0.2)
 				feature.at<float>(i, 0) = 0.2;
-		feature /= max(1e-6, norm(feature, NORM_L1));
+				*/
+		//feature /= max(1e-6, norm(feature, NORM_L1));
 
 		point.feature = feature;
 	}
@@ -415,12 +417,14 @@ vector<vector<myKeyPoint>> SiftDetector::siftDetector(const Mat &source, int num
 	return keyPoints_orientation;
 }
 
-void SiftDetector::show_SIFT_key_points(const Mat &source, const vector<vector<myKeyPoint>> &sift_point, int octave, bool wait_Key, int num_octaves) {
+void SiftDetector::show_SIFT_key_points(const Mat &source, const vector<vector<myKeyPoint>> &sift_point, int octave, int num_octaves, bool wait_Key) {
 	Mat dst = source.clone();
 
 	int original_size = 0;
 	if (source.rows < 500 && source.cols < 500)
 		original_size = 1;
+
+	if (octave == -1) octave = original_size;
 
 	if (original_size < octave)
 		for (int scale = 0; scale < (octave - original_size); ++scale)
