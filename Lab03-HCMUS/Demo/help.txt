@@ -1,0 +1,18 @@
+Ma lenh: 	
++ Harris: "[ten_chuong_trinh] [duong_dan_anh] harris [tham_so_k](vd: 0.05) [tham_so_alpha](vd: 0.01)"
++ Blob: "[ten_chuong_trinh] [duong_dan_anh] blob [tham_so_threshold_max](vd: 0.3) [tham_so_signma](vd: 1.0) [tham_so_k](vd: 1.41421356)"
++ Dog: "[ten_chuong_trinh] [duong_dan_anh] dog [tham_so_threshold_max](vd: 0.3) [tham_so_signma](vd: 1.0) [tham_so_k](vd: 1.41421356)"
++ Sift: "[ten_chuong_trinh] [duong_dan_anh] sift [n_octave](vd: 4) [n_scales](vd: 5) [tham_so_signma](vd: 1.6)"
++ Matching: "[ten_chuong_trinh] [duong_dan_anh_train] matching [duong_dan_anh_test] [tham_so_octave](vd: 1)"
+
+Vi du:
+
+1712822_Lab03.exe lena.png harris
+1712822_Lab03.exe lena.png harris 0.05 0.02
+1712822_Lab03.exe sunflower.jpg blob 
+1712822_Lab03.exe sunflower.jpg blob 0.25
+1712822_Lab03.exe sunflower.jpg dog
+1712822_Lab03.exe ../../../Data/train/15_3.jpg sift
+1712822_Lab03.exe ../../../Data/train/15_3.jpg sift 3 3
+1712822_Lab03.exe ../../../Data/train/06_3.jpg matching ../../../Data/test/03.jpg
+1712822_Lab03.exe ../../../Data/train/13_2.jpg matching ../../../Data/train/13_1.jpg 2
